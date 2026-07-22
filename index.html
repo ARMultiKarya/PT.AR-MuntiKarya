@@ -211,8 +211,10 @@
     let useFallback = false;
 
     // --- SUPABASE CLOUD DATABASE SETUP ---
-    let supabaseUrl = localStorage.getItem('pt_ar_supabase_url') || '';
-    let supabaseKey = localStorage.getItem('pt_ar_supabase_key') || '';
+    const DEFAULT_SUPABASE_URL = 'https://rmicglwqmulpbkvjvduw.supabase.co';
+    const DEFAULT_SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJtaWNnbHdxbXVscGJrdmp2ZHV3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ3MjgwMjgsImV4cCI6MjEwMDMwNDAyOH0.Ypkd4CPXI4POYZ7hEi_29USe6eYXO_0vYnkywvNSBs0';
+    let supabaseUrl = localStorage.getItem('pt_ar_supabase_url') || DEFAULT_SUPABASE_URL;
+    let supabaseKey = localStorage.getItem('pt_ar_supabase_key') || DEFAULT_SUPABASE_KEY;
     let supabaseClient = null;
 
     function initSupabase() {
