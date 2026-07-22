@@ -5917,7 +5917,12 @@
         }
 
         if (!refPoId || !finalCustomerId || items.length === 0 || items.some(item => !item.barangId)) {
-          alert('Lengkapi referensi PO, Customer, dan Barang!');
+          const missing = [];
+          if (!refPoId) missing.push("Referensi PO");
+          if (!finalCustomerId) missing.push("Customer");
+          if (items.length === 0) missing.push("Daftar Barang Kosong");
+          if (items.some(item => !item.barangId)) missing.push("Barang tidak valid (tanpa ID)");
+          alert('Gagal: Harap lengkapi data (' + missing.join(', ') + ')');
           return;
         }
 
