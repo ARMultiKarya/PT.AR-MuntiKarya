@@ -5905,7 +5905,18 @@
 
       const handleSave = async (e) => {
         e.preventDefault();
-        if (!refPoId || !customerId || items.length === 0 || items.some(item => !item.barangId)) {
+        
+        let finalCustomerId = customerId;
+        if (!finalCustomerId && refPoId) {
+          const po = poList.find(x => x.id === Number(refPoId));
+          if (po && po.customerId) {
+            finalCustomerId = po.customerId;
+          } else {
+            finalCustomerId = customers[0] ? customers[0].id : 1;
+          }
+        }
+
+        if (!refPoId || !finalCustomerId || items.length === 0 || items.some(item => !item.barangId)) {
           alert('Lengkapi referensi PO, Customer, dan Barang!');
           return;
         }
@@ -5931,7 +5942,7 @@
         const data = {
           invoiceNumber,
           refPoId: Number(refPoId) || null,
-          customerId: Number(customerId),
+          customerId: Number(finalCustomerId),
           invoiceDate,
           dueDate,
           discount: Number(discount),
