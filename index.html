@@ -1894,9 +1894,14 @@
                     pendingPoCount = poList.filter(po => {
                       const isCustomerOrSppg = currentUser?.role === 'mitra' || currentUser?.role === 'sppg';
                       if (isCustomerOrSppg) {
-                        const isMyPo = po.createdBy === currentUser?.username || 
-                                       (po.createdByDetail && po.createdByDetail.toLowerCase().includes('sppg')) || 
-                                       (po.createdByDetail && po.createdByDetail === 'SPPG Ngawen Muntilan');
+                        let isMyPo = false;
+                        if (currentUser?.customerId) {
+                          isMyPo = po.customerId === currentUser.customerId;
+                        } else {
+                          isMyPo = po.createdBy === currentUser?.username || 
+                                   (po.createdByDetail && po.createdByDetail.toLowerCase().includes('sppg')) || 
+                                   (po.createdByDetail && po.createdByDetail === 'SPPG Ngawen Muntilan');
+                        }
                         if (!isMyPo) return false;
                       }
                       return po.status !== 'Selesai' && po.status !== 'Lunas' && po.status !== 'Dibatalkan';
@@ -1909,9 +1914,14 @@
                       if (po.status !== 'Selesai') return false;
                       const isCustomerOrSppg = currentUser?.role === 'mitra' || currentUser?.role === 'sppg';
                       if (isCustomerOrSppg) {
-                        const isMyPo = po.createdBy === currentUser?.username || 
-                                       (po.createdByDetail && po.createdByDetail.toLowerCase().includes('sppg')) || 
-                                       (po.createdByDetail && po.createdByDetail === 'SPPG Ngawen Muntilan');
+                        let isMyPo = false;
+                        if (currentUser?.customerId) {
+                          isMyPo = po.customerId === currentUser.customerId;
+                        } else {
+                          isMyPo = po.createdBy === currentUser?.username || 
+                                   (po.createdByDetail && po.createdByDetail.toLowerCase().includes('sppg')) || 
+                                   (po.createdByDetail && po.createdByDetail === 'SPPG Ngawen Muntilan');
+                        }
                         if (!isMyPo) return false;
                       }
                       const hasInvoice = invoices.some(inv => Number(inv.refPoId) === Number(po.id));
@@ -2183,6 +2193,7 @@
               )}
               {currentModule === 'users' && (
                 <UserManagementModule 
+                  customers={customers}
                   showToast={showToast}
                   logActivity={logActivity}
                 />
@@ -2232,6 +2243,9 @@
 
       // SPPG or Customer PO filtering and calculations
       const userPOs = poList.filter(po => {
+        if (currentUser?.customerId) {
+          return po.customerId === currentUser.customerId;
+        }
         if (currentUser?.role === 'sppg') {
           return po.createdBy === currentUser.username ||
                  (po.createdByDetail && po.createdByDetail.toLowerCase().includes('sppg')) ||
@@ -3428,9 +3442,11 @@
       const [budgetLimit, setBudgetLimit] = React.useState('');
       const [poItems, setPoItems] = React.useState([{ barangId: '', qty: 1, price: 0, total: 0 }]);
 
-      // Pre-select customer if currentUser is mitra
+      // Pre-select customer if currentUser has customerId (mitra or sppg linked account)
       React.useEffect(() => {
-        if (currentUser?.role === 'mitra' && customers.length > 0 && !customerId) {
+        if (currentUser?.customerId) {
+          setCustomerId(String(currentUser.customerId));
+        } else if (currentUser?.role === 'mitra' && customers.length > 0 && !customerId) {
           const matchedCust = customers.find(c => 
             c.name.toLowerCase() === currentUser.username.toLowerCase() || 
             c.name.toLowerCase().includes(currentUser.username.toLowerCase()) || 
@@ -3465,7 +3481,7 @@
         setStatus('Draft');
         setJenis('Barang');
         setDeskripsi('');
-        setCustomerId('');
+        setCustomerId(currentUser?.customerId ? String(currentUser.customerId) : '');
         setBudgetLimit('');
         setCreatedByDetail(currentUser?.role === 'sppg' ? 'SPPG Ngawen Muntilan' : '');
         setPoItems([{ barangId: '', qty: 1, price: 0, total: 0 }]);
@@ -3918,12 +3934,25 @@
       };
 
       const filtered = poList.filter(po => {
-        // SPPG hanya bisa melihat PO yang mereka buat sendiri
-        if (currentUser?.role === 'sppg') {
-          const isCreatedByMe = po.createdBy === currentUser.username ||
-                              (po.createdByDetail && po.createdByDetail.toLowerCase().includes('sppg')) ||
-                              (po.createdByDetail && po.createdByDetail === 'SPPG Ngawen Muntilan');
-          if (!isCreatedByMe) return false;
+        // Filter based on linked customerId for SPPG or Mitra
+        if (currentUser?.customerId) {
+          if (po.customerId !== currentUser.customerId) return false;
+        } else {
+          // Fallback legacy filters
+          if (currentUser?.role === 'sppg') {
+            const isCreatedByMe = po.createdBy === currentUser.username ||
+                                (po.createdByDetail && po.createdByDetail.toLowerCase().includes('sppg')) ||
+                                (po.createdByDetail && po.createdByDetail === 'SPPG Ngawen Muntilan');
+            if (!isCreatedByMe) return false;
+          }
+          if (currentUser?.role === 'mitra') {
+            const matchedCust = customers.find(c => 
+              c.name.toLowerCase() === currentUser.username.toLowerCase() || 
+              c.name.toLowerCase().includes(currentUser.username.toLowerCase()) || 
+              c.company.toLowerCase().includes(currentUser.username.toLowerCase())
+            );
+            if (!matchedCust || po.customerId !== matchedCust.id) return false;
+          }
         }
 
         if (onlyShowShipments) {
@@ -4422,7 +4451,7 @@
                     </div>
                     <div>
                       <label className="block text-[10px] text-slate-400 uppercase tracking-wide mb-1">Nama Pemesan *</label>
-                      <select required disabled={currentUser?.role === 'mitra'} value={customerId} onChange={(e) => setCustomerId(e.target.value)} className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-3 py-2 rounded-xl focus:border-primary-500 focus:outline-none dark:text-white text-xs font-semibold disabled:opacity-75 disabled:bg-slate-50">
+                      <select required disabled={currentUser?.role === 'mitra' || !!currentUser?.customerId} value={customerId} onChange={(e) => setCustomerId(e.target.value)} className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-3 py-2 rounded-xl focus:border-primary-500 focus:outline-none dark:text-white text-xs font-semibold disabled:opacity-75 disabled:bg-slate-50">
                         <option value="">-- Pilih Nama Pemesan --</option>
                         {customers.map(c => (
                           <option key={c.id} value={c.id}>{c.name}</option>
@@ -5064,6 +5093,29 @@
       const filtered = buktiPembelian.filter(b => {
         const po = poList.find(p => p.id === b.poId);
         const sup = suppliers.find(s => s.id === b.supplierId);
+
+        // Filter based on linked customerId (scope)
+        if (currentUser?.customerId) {
+          if (!po || po.customerId !== currentUser.customerId) return false;
+        } else {
+          // Fallback legacy filters
+          if (currentUser?.role === 'sppg') {
+            if (!po) return false;
+            const isCreatedByMe = po.createdBy === currentUser.username ||
+                                (po.createdByDetail && po.createdByDetail.toLowerCase().includes('sppg')) ||
+                                (po.createdByDetail && po.createdByDetail === 'SPPG Ngawen Muntilan');
+            if (!isCreatedByMe) return false;
+          }
+          if (currentUser?.role === 'mitra') {
+            if (!po) return false;
+            const matchedCust = customers.find(c => 
+              c.name.toLowerCase() === currentUser.username.toLowerCase() || 
+              c.name.toLowerCase().includes(currentUser.username.toLowerCase()) || 
+              c.company.toLowerCase().includes(currentUser.username.toLowerCase())
+            );
+            if (!matchedCust || po.customerId !== matchedCust.id) return false;
+          }
+        }
         
         const matchesSearch = b.receiptNumber.toLowerCase().includes(globalSearch.toLowerCase()) ||
                (sup && sup.name.toLowerCase().includes(globalSearch.toLowerCase()));
@@ -6313,13 +6365,29 @@
       const filtered = invoices.filter(inv => {
         const cust = customers.find(c => c.id === inv.customerId);
         
-        // Security filter for customer/mitra role: only see their own invoices
-        if (currentUser?.role === 'mitra') {
-          if (!cust) return false;
-          const match = cust.name.toLowerCase() === currentUser.username.toLowerCase() || 
-                        cust.name.toLowerCase().includes(currentUser.username.toLowerCase()) || 
-                        cust.company.toLowerCase().includes(currentUser.username.toLowerCase());
-          if (!match) return false;
+        // Security filter for scoped accounts (sppg / mitra linked to customerId)
+        if (currentUser?.customerId) {
+          if (inv.customerId !== currentUser.customerId) return false;
+        } else {
+          // Fallback legacy filters
+          if (currentUser?.role === 'mitra') {
+            if (!cust) return false;
+            const match = cust.name.toLowerCase() === currentUser.username.toLowerCase() || 
+                          cust.name.toLowerCase().includes(currentUser.username.toLowerCase()) || 
+                          cust.company.toLowerCase().includes(currentUser.username.toLowerCase());
+            if (!match) return false;
+          }
+          if (currentUser?.role === 'sppg') {
+            if (inv.refPoId) {
+              const po = poList.find(p => p.id === inv.refPoId);
+              if (po) {
+                const isCreatedByMe = po.createdBy === currentUser.username ||
+                                    (po.createdByDetail && po.createdByDetail.toLowerCase().includes('sppg')) ||
+                                    (po.createdByDetail && po.createdByDetail === 'SPPG Ngawen Muntilan');
+                if (!isCreatedByMe) return false;
+              }
+            }
+          }
         }
 
         const matchesSearch = inv.invoiceNumber.toLowerCase().includes(globalSearch.toLowerCase()) ||
@@ -8484,9 +8552,15 @@ function RekapLabaRugiModule({ invoices, buktiPembelian, globalSearch, settings,
       const [budgetLimit, setBudgetLimit] = React.useState('');
       const [items, setItems] = React.useState([{ barangId: '', qty: 1, price: 0, total: 0 }]);
 
-      // Set default values based on role
+      // Set default values based on role & customer mapping
       React.useEffect(() => {
-        if (currentUser?.role === 'sppg') {
+        if (currentUser?.customerId) {
+          const match = customers.find(c => c.id === currentUser.customerId);
+          if (match) {
+            setCustomerName(match.name);
+            setBranchName(match.company || match.name);
+          }
+        } else if (currentUser?.role === 'sppg') {
           setBranchName('SPPG Ngawen Muntilan');
         } else if (currentUser?.role === 'mitra') {
           const match = customers.find(c => 
@@ -8761,7 +8835,7 @@ function RekapLabaRugiModule({ invoices, buktiPembelian, globalSearch, settings,
                   type="text" 
                   value={customerName} 
                   onChange={(e) => setCustomerName(e.target.value)} 
-                  readOnly={currentUser?.role === 'mitra'}
+                  readOnly={currentUser?.role === 'mitra' || !!currentUser?.customerId}
                   placeholder="Tulis nama customer..."
                   className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-3.5 py-2.5 rounded-xl focus:border-sky-500 focus:outline-none dark:text-white read-only:opacity-75"
                 />
@@ -8921,7 +8995,7 @@ function RekapLabaRugiModule({ invoices, buktiPembelian, globalSearch, settings,
     // ==========================================
     // 13. USER MANAGEMENT MODULE
     // ==========================================
-    function UserManagementModule({ showToast, logActivity }) {
+    function UserManagementModule({ showToast, logActivity, customers = [] }) {
       const [users, setUsers] = React.useState([]);
       const [modalOpen, setModalOpen] = React.useState(false);
       const [editUser, setEditUser] = React.useState(null);
@@ -8931,6 +9005,7 @@ function RekapLabaRugiModule({ invoices, buktiPembelian, globalSearch, settings,
       const [password, setPassword] = React.useState('');
       const [role, setRole] = React.useState('mitra');
       const [whatsapp, setWhatsapp] = React.useState('');
+      const [customerId, setCustomerId] = React.useState('');
       const [showPassword, setShowPassword] = React.useState(false);
 
       const fetchUsers = async () => {
@@ -8970,7 +9045,8 @@ function RekapLabaRugiModule({ invoices, buktiPembelian, globalSearch, settings,
             role,
             whatsapp: whatsapp.trim(),
             plainPassword: plain,
-            profilePic: editUser ? editUser.profilePic : ''
+            profilePic: editUser ? editUser.profilePic : '',
+            customerId: (role === 'sppg' || role === 'mitra') && customerId ? Number(customerId) : null
           };
           if (editUser) {
             data.id = editUser.id;
@@ -8985,6 +9061,7 @@ function RekapLabaRugiModule({ invoices, buktiPembelian, globalSearch, settings,
           setPassword('');
           setRole('mitra');
           setWhatsapp('');
+          setCustomerId('');
           setEditUser(null);
           fetchUsers();
         } catch (err) {
@@ -9024,6 +9101,7 @@ function RekapLabaRugiModule({ invoices, buktiPembelian, globalSearch, settings,
                 setPassword('');
                 setRole('mitra');
                 setWhatsapp('');
+                setCustomerId('');
                 setEditUser(null);
                 setModalOpen(true);
               }}
@@ -9041,6 +9119,7 @@ function RekapLabaRugiModule({ invoices, buktiPembelian, globalSearch, settings,
                   <th className="py-4 px-6">Username</th>
                   <th className="py-4 px-6">Role / Hak Akses</th>
                   <th className="py-4 px-6">No. WhatsApp</th>
+                  <th className="py-4 px-6">Hubungan Customer</th>
                   <th className="py-4 px-6">Kata Sandi</th>
                   <th className="py-4 px-6 text-right">Aksi</th>
                 </tr>
@@ -9059,6 +9138,9 @@ function RekapLabaRugiModule({ invoices, buktiPembelian, globalSearch, settings,
                       }`}>{u.role}</span>
                     </td>
                     <td className="py-4 px-6 font-mono font-semibold text-slate-600 dark:text-slate-350">{u.whatsapp || '-'}</td>
+                    <td className="py-4 px-6 font-semibold text-slate-700 dark:text-slate-300">
+                      {u.customerId ? (customers.find(c => c.id === u.customerId)?.name || `ID: ${u.customerId}`) : '-'}
+                    </td>
                     <td className="py-4 px-6 font-mono font-semibold text-slate-700 dark:text-slate-300">
                       <span className="px-1.5 py-0.5 rounded bg-slate-50 border border-slate-200">{u.plainPassword || u.username}</span>
                     </td>
@@ -9071,6 +9153,7 @@ function RekapLabaRugiModule({ invoices, buktiPembelian, globalSearch, settings,
                             setPassword('');
                             setRole(u.role);
                             setWhatsapp(u.whatsapp || '');
+                            setCustomerId(u.customerId || '');
                             setModalOpen(true);
                           }}
                           className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-800 text-slate-500 hover:text-green-600"
@@ -9137,6 +9220,21 @@ function RekapLabaRugiModule({ invoices, buktiPembelian, globalSearch, settings,
                       <option value="mitra">Mitra</option>
                     </select>
                   </div>
+                  {(role === 'sppg' || role === 'mitra') && (
+                    <div>
+                      <label className="block text-[10px] text-slate-400 uppercase tracking-wide mb-1">Hubungkan ke Customer / Cabang</label>
+                      <select 
+                        value={customerId} 
+                        onChange={(e) => setCustomerId(e.target.value)} 
+                        className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-3 py-2 rounded-xl focus:border-primary-500 focus:outline-none dark:text-white text-xs"
+                      >
+                        <option value="">-- Pilih Customer --</option>
+                        {customers.map(c => (
+                          <option key={c.id} value={c.id}>{c.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
                   <div className="flex justify-end gap-3 pt-4 border-t border-slate-100 dark:border-slate-855">
                     <button type="button" onClick={() => setModalOpen(false)} className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-800 text-slate-500 text-xs font-bold hover:bg-slate-50">Batal</button>
                     <button type="submit" className="px-5 py-2 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-xs font-bold shadow-lg shadow-primary-950/10">Simpan</button>
