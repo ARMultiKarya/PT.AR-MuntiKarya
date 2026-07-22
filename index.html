@@ -4908,7 +4908,7 @@
 
         const data = {
           receiptNumber,
-          poId: 0,
+          poId: poId ? Number(poId) : null,
           supplierId: Number(supplierId),
           receiptDate,
           fileBukti, // base64 string
@@ -5930,7 +5930,7 @@
 
         const data = {
           invoiceNumber,
-          refPoId: Number(refPoId),
+          refPoId: Number(refPoId) || null,
           customerId: Number(customerId),
           invoiceDate,
           dueDate,
