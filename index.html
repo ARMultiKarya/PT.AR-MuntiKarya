@@ -1899,8 +1899,8 @@
                           isMyPo = po.customerId === currentUser.customerId;
                         } else {
                           isMyPo = po.createdBy === currentUser?.username || 
-                                   (po.createdByDetail && po.createdByDetail.toLowerCase().includes('sppg')) || 
-                                   (po.createdByDetail && po.createdByDetail === 'SPPG Ngawen Muntilan');
+                                   (po.createdByDetail && po.createdByDetail.toLowerCase().trim() === ('sppg ' + currentUser.username.toLowerCase().trim())) ||
+                                   (currentUser?.username === 'sppgngawen' && po.createdByDetail && po.createdByDetail.toLowerCase().includes('ngawen'));
                         }
                         if (!isMyPo) return false;
                       }
@@ -1919,8 +1919,8 @@
                           isMyPo = po.customerId === currentUser.customerId;
                         } else {
                           isMyPo = po.createdBy === currentUser?.username || 
-                                   (po.createdByDetail && po.createdByDetail.toLowerCase().includes('sppg')) || 
-                                   (po.createdByDetail && po.createdByDetail === 'SPPG Ngawen Muntilan');
+                                   (po.createdByDetail && po.createdByDetail.toLowerCase().trim() === ('sppg ' + currentUser.username.toLowerCase().trim())) ||
+                                   (currentUser?.username === 'sppgngawen' && po.createdByDetail && po.createdByDetail.toLowerCase().includes('ngawen'));
                         }
                         if (!isMyPo) return false;
                       }
@@ -2248,8 +2248,8 @@
         }
         if (currentUser?.role === 'sppg') {
           return po.createdBy === currentUser.username ||
-                 (po.createdByDetail && po.createdByDetail.toLowerCase().includes('sppg')) ||
-                 (po.createdByDetail && po.createdByDetail === 'SPPG Ngawen Muntilan');
+                 (po.createdByDetail && po.createdByDetail.toLowerCase().trim() === ('sppg ' + currentUser.username.toLowerCase().trim())) ||
+                 (currentUser?.username === 'sppgngawen' && po.createdByDetail && po.createdByDetail.toLowerCase().includes('ngawen'));
         }
         if (currentUser?.role === 'mitra') {
           const matchedCust = customers.find(c => 
@@ -3483,7 +3483,12 @@
         setDeskripsi('');
         setCustomerId(currentUser?.customerId ? String(currentUser.customerId) : '');
         setBudgetLimit('');
-        setCreatedByDetail(currentUser?.role === 'sppg' ? 'SPPG Ngawen Muntilan' : '');
+        let defaultDetail = '';
+        if (currentUser?.role === 'sppg') {
+          const match = customers.find(c => c.id === currentUser.customerId);
+          defaultDetail = match ? match.name : 'SPPG ' + currentUser.username;
+        }
+        setCreatedByDetail(defaultDetail);
         setPoItems([{ barangId: '', qty: 1, price: 0, total: 0 }]);
         setModalOpen(true);
       };
@@ -3941,8 +3946,8 @@
           // Fallback legacy filters
           if (currentUser?.role === 'sppg') {
             const isCreatedByMe = po.createdBy === currentUser.username ||
-                                (po.createdByDetail && po.createdByDetail.toLowerCase().includes('sppg')) ||
-                                (po.createdByDetail && po.createdByDetail === 'SPPG Ngawen Muntilan');
+                                (po.createdByDetail && po.createdByDetail.toLowerCase().trim() === ('sppg ' + currentUser.username.toLowerCase().trim())) ||
+                                (currentUser?.username === 'sppgngawen' && po.createdByDetail && po.createdByDetail.toLowerCase().includes('ngawen'));
             if (!isCreatedByMe) return false;
           }
           if (currentUser?.role === 'mitra') {
@@ -5102,8 +5107,8 @@
           if (currentUser?.role === 'sppg') {
             if (!po) return false;
             const isCreatedByMe = po.createdBy === currentUser.username ||
-                                (po.createdByDetail && po.createdByDetail.toLowerCase().includes('sppg')) ||
-                                (po.createdByDetail && po.createdByDetail === 'SPPG Ngawen Muntilan');
+                                (po.createdByDetail && po.createdByDetail.toLowerCase().trim() === ('sppg ' + currentUser.username.toLowerCase().trim())) ||
+                                (currentUser?.username === 'sppgngawen' && po.createdByDetail && po.createdByDetail.toLowerCase().includes('ngawen'));
             if (!isCreatedByMe) return false;
           }
           if (currentUser?.role === 'mitra') {
@@ -6382,8 +6387,8 @@
               const po = poList.find(p => p.id === inv.refPoId);
               if (po) {
                 const isCreatedByMe = po.createdBy === currentUser.username ||
-                                    (po.createdByDetail && po.createdByDetail.toLowerCase().includes('sppg')) ||
-                                    (po.createdByDetail && po.createdByDetail === 'SPPG Ngawen Muntilan');
+                                    (po.createdByDetail && po.createdByDetail.toLowerCase().trim() === ('sppg ' + currentUser.username.toLowerCase().trim())) ||
+                                    (currentUser?.username === 'sppgngawen' && po.createdByDetail && po.createdByDetail.toLowerCase().includes('ngawen'));
                 if (!isCreatedByMe) return false;
               }
             }
@@ -8561,7 +8566,7 @@ function RekapLabaRugiModule({ invoices, buktiPembelian, globalSearch, settings,
             setBranchName(match.company || match.name);
           }
         } else if (currentUser?.role === 'sppg') {
-          setBranchName('SPPG Ngawen Muntilan');
+          setBranchName('SPPG ' + currentUser.username);
         } else if (currentUser?.role === 'mitra') {
           const match = customers.find(c => 
             c.name.toLowerCase() === currentUser.username.toLowerCase() || 
@@ -8576,7 +8581,7 @@ function RekapLabaRugiModule({ invoices, buktiPembelian, globalSearch, settings,
             setBranchName(currentUser.username);
           }
         } else {
-          setBranchName('SPPG Ngawen Muntilan');
+          setBranchName('SPPG ' + (currentUser?.username || ''));
         }
 
         const handleSupplierSetup = async () => {
