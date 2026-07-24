@@ -2209,6 +2209,7 @@
                   globalSearch={globalSearch}
                   settings={settings}
                   currentUser={currentUser}
+                  showToast={showToast}
                 />
               )}
               {currentModule === 'komunikasi' && (
@@ -3192,6 +3193,119 @@
       const [hargaJual, setHargaJual] = React.useState('');
       const [effectiveDate, setEffectiveDate] = React.useState('');
 
+      // Weekly Matrix Mode States & Helpers
+      const INDO_MONTHS = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+      const currentYear = new Date().getFullYear();
+      const currentMonthIndex = new Date().getMonth();
+
+      const [selectedYear, setSelectedYear] = React.useState(currentYear);
+      const [selectedMonths, setSelectedMonths] = React.useState(() => {
+        const prev = currentMonthIndex === 0 ? 11 : currentMonthIndex - 1;
+        return [prev, currentMonthIndex];
+      });
+      const [priceType, setPriceType] = React.useState('jual'); // 'jual' or 'beli'
+      const [viewMode, setViewMode] = React.useState('matrix'); // 'matrix' or 'history'
+
+      React.useEffect(() => {
+        if (window.lucide) {
+          window.lucide.createIcons();
+        }
+      }, [viewMode, selectedMonths, priceType]);
+
+      const toggleMonth = (monthIdx) => {
+        if (selectedMonths.includes(monthIdx)) {
+          if (selectedMonths.length > 1) {
+            setSelectedMonths(selectedMonths.filter(m => m !== monthIdx));
+          }
+        } else {
+          setSelectedMonths([...selectedMonths, monthIdx].sort((a, b) => a - b));
+        }
+      };
+
+      const getWeeksInMonth = (year, monthIdx) => {
+        const firstDay = new Date(year, monthIdx, 1).getDay();
+        const totalDays = new Date(year, monthIdx + 1, 0).getDate();
+        const remainingDays = totalDays - (7 - firstDay);
+        return 1 + Math.ceil(remainingDays / 7);
+      };
+
+      const getPriceForWeek = (bId, targetYear, targetMonth, targetWeek, type) => {
+        // Cari entri harga untuk barang ini yang tanggal efektifnya jatuh di tahun & bulan target
+        const entriesInMonth = priceLists.filter(p => {
+          if (p.barangId !== bId) return false;
+          const parts = p.effectiveDate.split('-');
+          if (parts.length < 2) return false;
+          const pYear = Number(parts[0]);
+          const pMonthIdx = Number(parts[1]) - 1;
+          return pYear === targetYear && pMonthIdx === targetMonth;
+        });
+
+        const firstDayOfMonth = new Date(targetYear, targetMonth, 1);
+        const startDayOfWeek = firstDayOfMonth.getDay();
+
+        // Sembunyikan jika minggu tersebut berada di masa depan dibandingkan hari ini,
+        // KECUALI jika pengguna sengaja meng-input ketentuan harga khusus untuk minggu masa depan tersebut.
+        const hasExplicitPriceInWeek = entriesInMonth.some(p => {
+          const parts = p.effectiveDate.split('-');
+          const pDay = Number(parts[2]);
+          const daysInFirstWeek = 7 - startDayOfWeek;
+          let pWeekIdx;
+          if (pDay <= daysInFirstWeek) {
+            pWeekIdx = 1;
+          } else {
+            pWeekIdx = 1 + Math.ceil((pDay - daysInFirstWeek) / 7);
+          }
+          return pWeekIdx === targetWeek;
+        });
+
+        let startDayOfMonth;
+        if (targetWeek === 1) {
+          startDayOfMonth = 1;
+        } else {
+          const daysInFirstWeek = 7 - startDayOfWeek;
+          startDayOfMonth = daysInFirstWeek + (targetWeek - 2) * 7 + 1;
+        }
+
+        const today = new Date();
+        const targetWeekStartDate = new Date(targetYear, targetMonth, startDayOfMonth);
+
+        if (targetWeekStartDate > today && !hasExplicitPriceInWeek) {
+          return 0;
+        }
+
+        if (entriesInMonth.length === 0) {
+          return 0;
+        }
+        
+        let endDayOfMonth;
+        if (targetWeek === 1) {
+          endDayOfMonth = 7 - startDayOfWeek;
+        } else {
+          const daysInFirstWeek = 7 - startDayOfWeek;
+          endDayOfMonth = daysInFirstWeek + (targetWeek - 2) * 7 + 7;
+        }
+        
+        const totalDays = new Date(targetYear, targetMonth + 1, 0).getDate();
+        if (endDayOfMonth > totalDays) {
+          endDayOfMonth = totalDays;
+        }
+        
+        // Filter entri dalam bulan ini yang tanggal berlakunya kurang dari atau sama dengan hari terakhir minggu target
+        const validEntries = entriesInMonth.filter(p => {
+          const parts = p.effectiveDate.split('-');
+          const pDay = Number(parts[2]);
+          return pDay <= endDayOfMonth;
+        });
+        
+        if (validEntries.length === 0) {
+          return 0;
+        }
+        
+        validEntries.sort((a, b) => b.effectiveDate.localeCompare(a.effectiveDate));
+        const latest = validEntries[0];
+        return type === 'jual' ? latest.hargaJual : latest.hargaBeli;
+      };
+
       const handleSave = async (e) => {
         e.preventDefault();
         if (!barangId) {
@@ -3310,13 +3424,17 @@
         showToast('Data harga berhasil diexport ke Excel.');
       };
 
-      const filtered = priceLists.filter(p => {
+      const filteredHistory = priceLists.filter(p => {
         const b = barangList.find(x => x.id === p.barangId);
         return b && b.name.toLowerCase().includes(globalSearch.toLowerCase());
       });
 
+      const filteredBarang = barangList.filter(b => {
+        return b.name.toLowerCase().includes(globalSearch.toLowerCase());
+      });
+
       return (
-        <div className="space-y-6 animate-fade-in">
+        <div className="space-y-6 animate-fade-in text-xs font-semibold">
           {priceAlerts && priceAlerts.length > 0 && (
             <div className="p-4 bg-amber-50 dark:bg-amber-955/20 border border-amber-200 dark:border-amber-900/40 text-amber-850 dark:text-amber-300 rounded-2xl text-xs font-semibold flex items-start gap-3 no-print">
               <i data-lucide="bell" className="w-4 h-4 text-amber-550 flex-shrink-0 mt-0.5 animate-bounce"></i>
@@ -3358,48 +3476,270 @@
             </div>
           </div>
 
-          <div className="bg-white dark:bg-slate-955 rounded-2xl border border-slate-150 dark:border-slate-850 shadow-sm overflow-hidden">
-            <table className="w-full text-left border-collapse text-xs">
-              <thead>
-                <tr className="bg-slate-50 dark:bg-slate-900/60 border-b border-slate-100 dark:border-slate-855 text-slate-400 font-bold uppercase tracking-wider text-[10px]">
-                  <th className="py-4 px-6">Barang</th>
-                  {!isReadOnly && <th className="py-4 px-6 text-right">Harga Beli Standard</th>}
-                  <th className="py-4 px-6 text-right">Harga Jual Standard</th>
-                  <th className="py-4 px-6 text-center">Tanggal Berlaku</th>
-                  {!isReadOnly && <th className="py-4 px-6 text-right">Aksi</th>}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-900/50">
-                {filtered.length === 0 ? (
-                  <tr>
-                    <td colSpan={isReadOnly ? 3 : 5} className="py-8 text-center text-slate-400 font-medium">Tidak ada penetapan harga ditemukan.</td>
-                  </tr>
-                ) : (
-                  filtered.map(p => {
-                    const b = barangList.find(x => x.id === p.barangId);
-                    return (
-                      <tr key={p.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-900/10">
-                        <td className="py-4 px-6 font-extrabold text-slate-855 dark:text-white">{b ? b.name : 'Unknown'}</td>
-                        {!isReadOnly && <td className="py-4 px-6 text-right font-extrabold text-red-500">{formatRupiah(p.hargaBeli || 0)}</td>}
-                        <td className="py-4 px-6 text-right font-extrabold text-primary-600 dark:text-primary-400">{formatRupiah(p.hargaJual || 0)}</td>
-                        <td className="py-4 px-6 text-center font-semibold text-slate-550">{p.effectiveDate}</td>
-                        {!isReadOnly && (
-                          <td className="py-4 px-6 text-right">
-                            <button 
-                              onClick={() => handleDelete(p)}
-                              className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-800 text-slate-500 hover:text-red-655 hover:border-red-200"
-                            >
-                              <i data-lucide="trash-2" className="w-3.5 h-3.5"></i>
-                            </button>
-                          </td>
-                        )}
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
+          {/* Panel Filter Mode Tampilan dan Parameter Matriks */}
+          <div className="bg-white dark:bg-slate-955 p-5 rounded-2xl border border-slate-150 dark:border-slate-850 flex flex-wrap gap-6 items-center justify-between text-xs font-semibold no-print shadow-sm animate-fade-in">
+            <div className="flex flex-wrap gap-6 items-center">
+              {/* Toggle Mode Tampilan */}
+              <div>
+                <label className="block text-[10px] text-slate-400 uppercase tracking-wide mb-1.5">Mode Tampilan</label>
+                <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-1 rounded-xl flex gap-1">
+                  <button 
+                    type="button"
+                    onClick={() => setViewMode('matrix')}
+                    className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase transition-all ${
+                      viewMode === 'matrix' 
+                        ? 'bg-white dark:bg-slate-955 text-primary-600 dark:text-primary-400 shadow-sm border border-slate-200 dark:border-slate-800' 
+                        : 'text-slate-500 hover:text-slate-800'
+                    }`}
+                  >
+                    Matriks Mingguan
+                  </button>
+                  <button 
+                    type="button"
+                    onClick={() => setViewMode('history')}
+                    className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase transition-all ${
+                      viewMode === 'history' 
+                        ? 'bg-white dark:bg-slate-955 text-primary-600 dark:text-primary-400 shadow-sm border border-slate-200 dark:border-slate-800' 
+                        : 'text-slate-500 hover:text-slate-800'
+                    }`}
+                  >
+                    Riwayat Penetapan
+                  </button>
+                </div>
+              </div>
+
+              {viewMode === 'matrix' && (
+                <>
+                  {/* Pilihan Tahun */}
+                  <div>
+                    <label className="block text-[10px] text-slate-400 uppercase tracking-wide mb-1.5">Tahun</label>
+                    <select 
+                      value={selectedYear} 
+                      onChange={(e) => setSelectedYear(Number(e.target.value))}
+                      className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-3 py-1.5 rounded-xl focus:border-primary-500 focus:outline-none dark:text-white"
+                    >
+                      {[currentYear - 2, currentYear - 1, currentYear, currentYear + 1].map(yr => (
+                        <option key={yr} value={yr}>{yr}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Tipe Harga */}
+                  <div>
+                    <label className="block text-[10px] text-slate-400 uppercase tracking-wide mb-1.5">Tipe Harga</label>
+                    <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-1 rounded-xl flex gap-1">
+                      <button 
+                        type="button"
+                        onClick={() => setPriceType('jual')}
+                        className={`px-3 py-1 rounded-lg text-[10px] font-bold transition-all ${
+                          priceType === 'jual' 
+                            ? 'bg-white dark:bg-slate-955 text-primary-600 dark:text-primary-400 shadow-sm border border-slate-200' 
+                            : 'text-slate-500 hover:text-slate-855'
+                        }`}
+                      >
+                        Harga Jual
+                      </button>
+                      <button 
+                        type="button"
+                        onClick={() => setPriceType('beli')}
+                        className={`px-3 py-1 rounded-lg text-[10px] font-bold transition-all ${
+                          priceType === 'beli' 
+                            ? 'bg-white dark:bg-slate-955 text-primary-600 dark:text-primary-400 shadow-sm border border-slate-200' 
+                            : 'text-slate-500 hover:text-slate-855'
+                        }`}
+                      >
+                        Harga Beli
+                      </button>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+            
+            {viewMode === 'matrix' && (
+              <div className="text-[10px] text-slate-400 italic">
+                * Harga kosong otomatis membawa harga terdekat dari minggu sebelumnya.
+              </div>
+            )}
           </div>
+
+          {/* Selector Bulan Matriks */}
+          {viewMode === 'matrix' && (
+            <div className="bg-white dark:bg-slate-955 p-5 rounded-2xl border border-slate-150 dark:border-slate-850 space-y-3 shadow-sm no-print animate-fade-in">
+              <div className="flex items-center justify-between border-b pb-2 border-slate-100 dark:border-slate-900">
+                <span className="text-[10px] text-slate-400 uppercase tracking-wider font-extrabold flex items-center gap-1.5">
+                  <i data-lucide="filter" className="w-3.5 h-3.5 text-primary-500"></i> Pilih Bulan yang Ditampilkan
+                </span>
+                <div className="flex gap-2">
+                  <button 
+                    type="button"
+                    onClick={() => setSelectedMonths([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11])}
+                    className="text-[9px] text-primary-600 dark:text-primary-400 font-bold hover:underline"
+                  >
+                    Pilih Semua
+                  </button>
+                  <span className="text-slate-350">•</span>
+                  <button 
+                    type="button"
+                    onClick={() => setSelectedMonths([currentMonthIndex])}
+                    className="text-[9px] text-primary-600 dark:text-primary-400 font-bold hover:underline"
+                  >
+                    Bulan Ini Saja
+                  </button>
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {INDO_MONTHS.map((mName, idx) => {
+                  const isChecked = selectedMonths.includes(idx);
+                  return (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => toggleMonth(idx)}
+                      className={`px-3 py-1.5 rounded-xl border font-bold transition-all text-[10px] active:scale-95 ${
+                        isChecked 
+                          ? 'bg-primary-50 hover:bg-primary-100 text-primary-700 dark:bg-primary-955/20 dark:text-primary-400 border-primary-300 dark:border-primary-800 shadow-sm' 
+                          : 'bg-white hover:bg-slate-50 text-slate-500 border-slate-200 dark:bg-slate-900 dark:hover:bg-slate-800 dark:border-slate-800'
+                      }`}
+                    >
+                      {mName}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {viewMode === 'matrix' ? (
+            <div className="bg-white dark:bg-slate-955 rounded-2xl border border-slate-150 dark:border-slate-855 shadow-sm overflow-hidden animate-fade-in">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse text-xs">
+                  <thead>
+                    <tr className="bg-slate-50 dark:bg-slate-900/60 border-b border-slate-150 dark:border-slate-850 text-slate-400 font-bold uppercase tracking-wider text-[9px]">
+                      <th rowSpan="2" className="py-4 px-4 border-r border-slate-150 dark:border-slate-850 min-w-[40px] text-center">No</th>
+                      <th rowSpan="2" className="py-4 px-6 border-r border-slate-150 dark:border-slate-850 min-w-[220px]">Nama Barang</th>
+                      <th rowSpan="2" className="py-4 px-4 border-r border-slate-150 dark:border-slate-850 min-w-[80px] text-center">Satuan</th>
+                      {selectedMonths.map(mIdx => {
+                        const numWeeks = getWeeksInMonth(selectedYear, mIdx);
+                        return (
+                          <th key={mIdx} colSpan={numWeeks} className="py-2.5 px-2 border-r border-slate-150 dark:border-slate-850 text-center font-black bg-slate-100/50 dark:bg-slate-900/40 text-primary-700 dark:text-primary-400">
+                            {INDO_MONTHS[mIdx]} {selectedYear}
+                          </th>
+                        );
+                      })}
+                    </tr>
+                    <tr className="bg-slate-50 dark:bg-slate-900/60 border-b border-slate-150 dark:border-slate-850 text-slate-400 font-bold uppercase tracking-wider text-[8px] text-center">
+                      {selectedMonths.map(mIdx => {
+                        const numWeeks = getWeeksInMonth(selectedYear, mIdx);
+                        const weekHeaders = [];
+                        for (let w = 1; w <= numWeeks; w++) {
+                          weekHeaders.push(
+                            <th key={w} className="py-2 px-1 border-r border-slate-150 dark:border-slate-850 min-w-[70px]">Wk {w}</th>
+                          );
+                        }
+                        return <React.Fragment key={mIdx}>{weekHeaders}</React.Fragment>;
+                      })}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-150 dark:divide-slate-855 font-semibold">
+                    {filteredBarang.length === 0 ? (
+                      <tr>
+                        <td colSpan={3 + selectedMonths.reduce((sum, mIdx) => sum + getWeeksInMonth(selectedYear, mIdx), 0)} className="py-12 text-center text-slate-400 font-medium italic">
+                          Tidak ada barang ditemukan untuk pencarian "{globalSearch}"
+                        </td>
+                      </tr>
+                    ) : (
+                      filteredBarang.map((b, idx) => (
+                        <tr key={b.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-900/10">
+                          <td className="py-3 px-4 border-r border-slate-150 dark:border-slate-850 text-center text-slate-400 font-bold">{idx + 1}</td>
+                          <td className="py-3 px-6 border-r border-slate-150 dark:border-slate-850 font-extrabold text-slate-855 dark:text-white truncate max-w-[220px]" title={b.name}>{b.name}</td>
+                          <td className="py-3 px-4 border-r border-slate-150 dark:border-slate-850 text-center text-slate-550 capitalize">{b.unit || '-'}</td>
+                          {selectedMonths.map(mIdx => {
+                            const numWeeks = getWeeksInMonth(selectedYear, mIdx);
+                            const weekCells = [];
+                            for (let w = 1; w <= numWeeks; w++) {
+                              const price = getPriceForWeek(b.id, selectedYear, mIdx, w, priceType);
+                              weekCells.push(
+                                <td key={`${mIdx}-${w}`} className={`py-3 px-2 border-r border-slate-150 dark:border-slate-850 text-right font-mono font-bold ${price > 0 ? (priceType === 'jual' ? 'text-primary-600 dark:text-primary-400' : 'text-amber-600 dark:text-amber-400') : 'text-slate-350 dark:text-slate-700 font-normal'}`}>
+                                  {price > 0 ? formatRupiah(price) : '-'}
+                                </td>
+                              );
+                            }
+                            return <React.Fragment key={mIdx}>{weekCells}</React.Fragment>;
+                          })}
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                  <tfoot>
+                    <tr className="bg-slate-100/50 dark:bg-slate-900/60 font-black border-t-2 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200">
+                      <td className="py-3 px-4 border-r border-slate-150 dark:border-slate-850 text-center text-slate-400">-</td>
+                      <td className="py-3 px-6 border-r border-slate-150 dark:border-slate-850 uppercase tracking-wider text-[10px] text-left font-black">TOTAL</td>
+                      <td className="py-3 px-4 border-r border-slate-150 dark:border-slate-850 text-center">-</td>
+                      {selectedMonths.map(mIdx => {
+                        const numWeeks = getWeeksInMonth(selectedYear, mIdx);
+                        const weekCells = [];
+                        for (let w = 1; w <= numWeeks; w++) {
+                          const sumForWeek = filteredBarang.reduce((sum, b) => {
+                            return sum + getPriceForWeek(b.id, selectedYear, mIdx, w, priceType);
+                          }, 0);
+                          weekCells.push(
+                            <td key={`${mIdx}-${w}`} className="py-3 px-2 border-r border-slate-150 dark:border-slate-850 text-right font-mono text-primary-700 dark:text-primary-400 bg-primary-50/20 dark:bg-primary-955/5">
+                              {sumForWeek > 0 ? formatRupiah(sumForWeek) : '-'}
+                            </td>
+                          );
+                        }
+                        return <React.Fragment key={mIdx}>{weekCells}</React.Fragment>;
+                      })}
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            </div>
+          ) : (
+            <div className="bg-white dark:bg-slate-955 rounded-2xl border border-slate-150 dark:border-slate-850 shadow-sm overflow-hidden animate-fade-in">
+              <table className="w-full text-left border-collapse text-xs">
+                <thead>
+                  <tr className="bg-slate-50 dark:bg-slate-900/60 border-b border-slate-100 dark:border-slate-855 text-slate-400 font-bold uppercase tracking-wider text-[10px]">
+                    <th className="py-4 px-6">Barang</th>
+                    {!isReadOnly && <th className="py-4 px-6 text-right">Harga Beli Standard</th>}
+                    <th className="py-4 px-6 text-right">Harga Jual Standard</th>
+                    <th className="py-4 px-6 text-center">Tanggal Berlaku</th>
+                    {!isReadOnly && <th className="py-4 px-6 text-right">Aksi</th>}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-900/50 font-semibold">
+                  {filteredHistory.length === 0 ? (
+                    <tr>
+                      <td colSpan={isReadOnly ? 3 : 5} className="py-8 text-center text-slate-400 font-medium">Tidak ada penetapan harga ditemukan.</td>
+                    </tr>
+                  ) : (
+                    filteredHistory.map(p => {
+                      const b = barangList.find(x => x.id === p.barangId);
+                      return (
+                        <tr key={p.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-900/10">
+                          <td className="py-4 px-6 font-extrabold text-slate-855 dark:text-white">{b ? b.name : 'Unknown'}</td>
+                          {!isReadOnly && <td className="py-4 px-6 text-right font-extrabold text-red-500">{formatRupiah(p.hargaBeli || 0)}</td>}
+                          <td className="py-4 px-6 text-right font-extrabold text-primary-600 dark:text-primary-400">{formatRupiah(p.hargaJual || 0)}</td>
+                          <td className="py-4 px-6 text-center font-semibold text-slate-555">{p.effectiveDate}</td>
+                          {!isReadOnly && (
+                            <td className="py-4 px-6 text-right">
+                              <button 
+                                onClick={() => handleDelete(p)}
+                                className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-800 text-slate-500 hover:text-red-655 hover:border-red-200"
+                              >
+                                <i data-lucide="trash-2" className="w-3.5 h-3.5"></i>
+                              </button>
+                            </td>
+                          )}
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+          )}
 
           {/* Form Modal */}
           {modalOpen && (
@@ -7022,7 +7362,7 @@
     );
   }
 
-function RekapLabaRugiModule({ invoices, buktiPembelian, globalSearch, settings, currentUser }) {
+function RekapLabaRugiModule({ invoices, buktiPembelian, globalSearch, settings, currentUser, showToast }) {
       const [startDate, setStartDate] = React.useState('');
       const [endDate, setEndDate] = React.useState('');
       const [labaRugiMode, setLabaRugiMode] = React.useState(currentUser?.role === 'mitra' ? 'mitra' : 'standard');
@@ -7030,6 +7370,76 @@ function RekapLabaRugiModule({ invoices, buktiPembelian, globalSearch, settings,
       // Manual Inputs for Mitra Mode
       const [gajiFinance, setGajiFinance] = React.useState(1250000); // 5,000,000 / 4 portion
       const [penerimaManfaat, setPenerimaManfaat] = React.useState(0);
+
+      // Manual Calculation States
+      const [manualBaseProfit, setManualBaseProfit] = React.useState(() => Number(localStorage.getItem('pt_ar_manual_base_profit') || 0));
+      const [manualBaseProfitInput, setManualBaseProfitInput] = React.useState(() => {
+        const val = Number(localStorage.getItem('pt_ar_manual_base_profit') || 0);
+        return val === 0 ? '' : new Intl.NumberFormat('id-ID').format(val);
+      });
+      const [allocations, setAllocations] = React.useState(() => JSON.parse(localStorage.getItem('pt_ar_manual_allocations') || '[]'));
+      const [newAllocName, setNewAllocName] = React.useState('');
+      const [newAllocType, setNewAllocType] = React.useState('rp'); // 'rp' or 'percent'
+      const [newAllocValue, setNewAllocValue] = React.useState('');
+
+      const handleManualBaseProfitChange = (valStr) => {
+        const cleanDigits = valStr.replace(/\D/g, '');
+        const cleanNum = cleanDigits ? Number(cleanDigits) : 0;
+        setManualBaseProfit(cleanNum);
+        if (cleanNum === 0) {
+          setManualBaseProfitInput('');
+        } else {
+          setManualBaseProfitInput(new Intl.NumberFormat('id-ID').format(cleanNum));
+        }
+      };
+
+      React.useEffect(() => {
+        localStorage.setItem('pt_ar_manual_base_profit', manualBaseProfit.toString());
+        localStorage.setItem('pt_ar_manual_allocations', JSON.stringify(allocations));
+      }, [manualBaseProfit, allocations]);
+
+      React.useEffect(() => {
+        if (window.lucide) {
+          window.lucide.createIcons();
+        }
+      }, [labaRugiMode, allocations]);
+
+      const handleAddAllocation = (e) => {
+        e.preventDefault();
+        if (!newAllocName.trim() || !newAllocValue) return;
+        const newAlloc = {
+          id: Date.now(),
+          name: newAllocName.trim(),
+          type: newAllocType,
+          value: Number(newAllocValue)
+        };
+        setAllocations([...allocations, newAlloc]);
+        setNewAllocName('');
+        setNewAllocValue('');
+        if (showToast) showToast("Pembagian manual berhasil ditambahkan.");
+      };
+
+      const handleRemoveAllocation = (id) => {
+        setAllocations(allocations.filter(a => a.id !== id));
+        if (showToast) showToast("Pembagian manual berhasil dihapus.");
+      };
+
+      const handleLoadMitraTemplate = () => {
+        const template = [
+          { id: 1, name: 'Potongan Pajak PT (2%)', type: 'percent', value: 2 },
+          { id: 2, name: 'Gaji Finance Mingguan', type: 'rp', value: 1250000 },
+          { id: 3, name: 'Mitra 1 (10%)', type: 'percent', value: 10 },
+          { id: 4, name: 'Mitra 2 (10%)', type: 'percent', value: 10 },
+          { id: 5, name: 'Mitra 3 (10%)', type: 'percent', value: 10 },
+          { id: 6, name: 'Mitra 4 (10%)', type: 'percent', value: 10 },
+          { id: 7, name: 'Mitra 5 (10%)', type: 'percent', value: 10 },
+          { id: 8, name: 'Mitra 6 (10%)', type: 'percent', value: 10 },
+          { id: 9, name: 'Penerima Ke-7 (5%)', type: 'percent', value: 5 },
+          { id: 10, name: 'Sisa Kas PT (35%)', type: 'percent', value: 35 }
+        ];
+        setAllocations(template);
+        if (showToast) showToast("Template kemitraan berhasil dimuat.");
+      };
 
       // Helper function to set filter to current week (Monday - Saturday)
       const setThisWeekFilter = () => {
@@ -7146,6 +7556,43 @@ function RekapLabaRugiModule({ invoices, buktiPembelian, globalSearch, settings,
         XLSX.writeFile(wb, `Laba_Rugi_PT_AR_MultiKarya_${new Date().getFullYear()}.xlsx`);
       };
 
+      // Export Manual Excel
+      const handleExportExcelManual = () => {
+        const rows = [
+          ['KALKULATOR PERHITUNGAN MANASUKA / MANUAL PROFIT'],
+          [settings.name],
+          [`Tanggal Ekspor: ${new Date().toLocaleDateString('id-ID')}`],
+          [],
+          ['Laba/Profit Acuan Utama', manualBaseProfit],
+          [],
+          ['Daftar Alokasi Penggunaan / Pembagian'],
+          ['No', 'Nama Alokasi', 'Jenis Potongan', 'Nilai Input', 'Hasil Rupiah (IDR)'],
+        ];
+
+        let totalAllocated = 0;
+        allocations.forEach((a, idx) => {
+          const rupVal = a.type === 'percent' ? (manualBaseProfit * (a.value / 100)) : a.value;
+          totalAllocated += rupVal;
+          rows.push([
+            idx + 1,
+            a.name,
+            a.type === 'percent' ? 'Persentase (%)' : 'Nominal Flat (Rp)',
+            a.value + (a.type === 'percent' ? '%' : ''),
+            rupVal
+          ]);
+        });
+
+        rows.push([]);
+        rows.push(['Total Alokasi Pembagian', totalAllocated]);
+        rows.push(['SISA LABA BERSIH AKHIR', manualBaseProfit - totalAllocated]);
+
+        const wb = XLSX.utils.book_new();
+        const ws = XLSX.utils.aoa_to_sheet(rows);
+        ws['!cols'] = [{ wch: 10 }, { wch: 35 }, { wch: 25 }, { wch: 15 }, { wch: 25 }];
+        XLSX.utils.book_append_sheet(wb, ws, 'Kalkulasi Manual');
+        XLSX.writeFile(wb, `Kalkulasi_Manual_Laba_Rugi_${new Date().getFullYear()}.xlsx`);
+      };
+
       // Export Mitra Excel
       const handleExportExcelMitra = () => {
         const dateRangeText = startDate || endDate
@@ -7221,11 +7668,27 @@ function RekapLabaRugiModule({ invoices, buktiPembelian, globalSearch, settings,
                   >
                     Distribusi Mitra
                   </button>
+                  <button 
+                    onClick={() => setLabaRugiMode('manual')}
+                    className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase transition-all ${
+                      labaRugiMode === 'manual' 
+                        ? 'bg-white dark:bg-slate-955 text-primary-600 dark:text-primary-400 shadow-sm' 
+                        : 'text-slate-500 hover:text-slate-800'
+                    }`}
+                  >
+                    Kalkulator Manual
+                  </button>
                 </div>
               )}
               
               <button 
-                onClick={labaRugiMode === 'mitra' ? handleExportExcelMitra : handleExportExcelStandard}
+                onClick={
+                  labaRugiMode === 'mitra' 
+                    ? handleExportExcelMitra 
+                    : labaRugiMode === 'manual' 
+                      ? handleExportExcelManual 
+                      : handleExportExcelStandard
+                }
                 className="bg-green-600 hover:bg-green-700 text-white text-xs font-semibold px-4 py-2.5 rounded-xl shadow-lg shadow-green-950/15 flex items-center gap-2"
               >
                 <i data-lucide="file-spreadsheet" className="w-3.5 h-3.5"></i> Ekspor Laporan Excel
@@ -7313,12 +7776,12 @@ function RekapLabaRugiModule({ invoices, buktiPembelian, globalSearch, settings,
                     <li><strong>Pajak PT 2%</strong> dipotong otomatis dan konsisten dari setiap transaksi yang dicatat.</li>
                   </ul>
                 </div>
-                <div className="bg-white dark:bg-slate-950 p-4 rounded-xl border border-amber-100 dark:border-slate-800 text-[10px] text-amber-800 dark:text-amber-300 font-semibold mt-4">
+                <div className="bg-white dark:bg-slate-955 p-4 rounded-xl border border-amber-100 dark:border-slate-800 text-[10px] text-amber-800 dark:text-amber-300 font-semibold mt-4">
                   Informasi Pajak: Sesuai ketetapan internal PT AR MULTI KARYA, nilai perhitungan pajak dikenakan flat 2% dari subtotal dikurang potongan diskon pada invoice penjualan.
                 </div>
               </div>
             </div>
-          ) : (
+          ) : labaRugiMode === 'mitra' ? (
             <div className="space-y-8 font-semibold">
               {/* Parameter input panel */}
               <div className="bg-white dark:bg-slate-955 p-6 rounded-2xl border border-slate-150 dark:border-slate-850 shadow-sm grid grid-cols-1 md:grid-cols-2 gap-6 no-print">
@@ -7343,11 +7806,9 @@ function RekapLabaRugiModule({ invoices, buktiPembelian, globalSearch, settings,
                   <h4 className="font-bold text-[10px] text-slate-455 uppercase tracking-wider mb-3">Penerima Manfaat (Potongan Lumbung)</h4>
                   <div className="space-y-3">
                     <div>
-                      <label className="block text-[10px] text-slate-400 uppercase tracking-wide mb-1">Total Porsi / Penerima Manfaat (Contoh: 300)</label>
+                      <label className="block text-[10px] text-slate-400 uppercase tracking-wide mb-1">Jumlah Porsi Penerima Manfaat</label>
                       <input 
                         type="number" 
-                        min="0"
-                        placeholder="misal: 300"
                         value={penerimaManfaat} 
                         disabled={currentUser?.role !== 'admin'}
                         onChange={(e) => setPenerimaManfaat(e.target.value)} 
@@ -7457,11 +7918,224 @@ function RekapLabaRugiModule({ invoices, buktiPembelian, globalSearch, settings,
                 </div>
               </div>
             </div>
+          ) : (
+            <div className="space-y-8 font-semibold">
+              {/* Input Profit Acuan Card */}
+              <div className="bg-white dark:bg-slate-955 p-6 rounded-2xl border border-slate-150 dark:border-slate-850 shadow-sm grid grid-cols-1 md:grid-cols-12 gap-6 no-print">
+                <div className="md:col-span-12">
+                  <h4 className="font-bold text-[10px] text-slate-450 uppercase tracking-wider mb-3">Profit Acuan Utama</h4>
+                  <div className="flex gap-4 items-end">
+                    <div className="flex-1">
+                      <label className="block text-[10px] text-slate-400 uppercase tracking-wide mb-1">Masukkan Jumlah Laba / Profit (Rp)</label>
+                      <input 
+                        type="text" 
+                        value={manualBaseProfitInput} 
+                        onChange={(e) => handleManualBaseProfitChange(e.target.value)} 
+                        placeholder="Contoh: 10.000.000"
+                        className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-3 py-2.5 rounded-xl focus:border-primary-500 focus:outline-none dark:text-white font-extrabold text-sm" 
+                      />
+                    </div>
+                    <button
+                      onClick={() => {
+                        setManualBaseProfit(netProfitStandard);
+                        setManualBaseProfitInput(netProfitStandard === 0 ? '' : new Intl.NumberFormat('id-ID').format(netProfitStandard));
+                      }}
+                      className="bg-primary-50 hover:bg-primary-100 text-primary-700 dark:bg-primary-950/20 dark:text-primary-400 px-4 py-2.5 rounded-xl font-bold border border-primary-100 dark:border-primary-900 text-xs flex items-center gap-1.5 h-[42px]"
+                      title="Salin dari Laba Bersih Standar saat ini"
+                    >
+                      <i data-lucide="copy" className="w-3.5 h-3.5"></i> Gunakan Laba Riil
+                    </button>
+                  </div>
+                  <span className="text-[9px] text-slate-400 block mt-1">
+                    Nilai acuan laba kotor/bersih yang ingin dibagi (misal laba seminggu atau sebulan). Anda bisa mengetik manual atau mengklik "Gunakan Laba Riil" untuk menyalin otomatis dari hasil transaksi terfilter saat ini.
+                  </span>
+                </div>
+              </div>
+
+              {/* Form Tambah Alokasi Card */}
+              <div className="bg-white dark:bg-slate-955 p-6 rounded-2xl border border-slate-150 dark:border-slate-850 shadow-sm no-print">
+                <h4 className="font-bold text-[10px] text-slate-450 uppercase tracking-wider mb-4 border-b pb-2 border-slate-100 dark:border-slate-900 flex items-center gap-1.5">
+                  <i data-lucide="plus-circle" className="w-4 h-4 text-primary-500"></i> Tambah Alokasi Penggunaan / Pembagian Laba
+                </h4>
+                <form onSubmit={handleAddAllocation} className="grid grid-cols-1 md:grid-cols-12 gap-4 text-xs font-semibold">
+                  <div className="md:col-span-5">
+                    <label className="block text-[10px] text-slate-400 uppercase tracking-wide mb-1">Nama Alokasi / Kegunaan</label>
+                    <input 
+                      type="text"
+                      required
+                      placeholder="Contoh: Operasional, Tabungan, Mitra A, Gaji"
+                      value={newAllocName}
+                      onChange={(e) => setNewAllocName(e.target.value)}
+                      className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-3 py-2.5 rounded-xl focus:border-primary-500 focus:outline-none dark:text-white"
+                    />
+                  </div>
+                  <div className="md:col-span-3">
+                    <label className="block text-[10px] text-slate-400 uppercase tracking-wide mb-1">Jenis Potongan</label>
+                    <select
+                      value={newAllocType}
+                      onChange={(e) => setNewAllocType(e.target.value)}
+                      className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-3 py-2.5 rounded-xl focus:border-primary-500 focus:outline-none dark:text-white"
+                    >
+                      <option value="rp">Nominal Flat (Rp)</option>
+                      <option value="percent">Persentase (%)</option>
+                    </select>
+                  </div>
+                  <div className="md:col-span-3">
+                    <label className="block text-[10px] text-slate-400 uppercase tracking-wide mb-1">
+                      {newAllocType === 'percent' ? 'Nilai Persentase (%)' : 'Nilai Nominal (Rp)'}
+                    </label>
+                    <input 
+                      type="number"
+                      required
+                      min="0"
+                      step={newAllocType === 'percent' ? '0.1' : '1'}
+                      placeholder={newAllocType === 'percent' ? 'Contoh: 10' : 'Contoh: 100000'}
+                      value={newAllocValue}
+                      onChange={(e) => setNewAllocValue(e.target.value)}
+                      className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-3 py-2.5 rounded-xl focus:border-primary-500 focus:outline-none dark:text-white font-mono"
+                    />
+                  </div>
+                  <div className="md:col-span-1 flex items-end">
+                    <button
+                      type="submit"
+                      className="w-full bg-primary-600 hover:bg-primary-700 text-white font-bold h-[42px] rounded-xl flex items-center justify-center shadow-md shadow-primary-950/10 active:scale-95 transition-all"
+                      title="Tambah Alokasi"
+                    >
+                      <i data-lucide="plus" className="w-5 h-5"></i>
+                    </button>
+                  </div>
+                </form>
+              </div>
+
+              {/* Detail Tabel Alokasi & Rekap Akhir */}
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                {/* Tabel Alokasi */}
+                <div className="bg-white dark:bg-slate-955 rounded-2xl border border-slate-150 dark:border-slate-850 shadow-sm overflow-hidden lg:col-span-8 flex flex-col">
+                  <div className="p-6 border-b border-slate-100 dark:border-slate-855 flex justify-between items-center flex-wrap gap-4 no-print">
+                    <h4 className="font-bold text-[10px] text-slate-450 uppercase tracking-wider">Daftar Pembagian Alokasi Laba</h4>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={handleLoadMitraTemplate}
+                        className="bg-primary-50 hover:bg-primary-100 text-primary-700 dark:bg-primary-950/20 dark:text-primary-400 px-3 py-1.5 rounded-xl font-bold border border-primary-100 dark:border-primary-900 text-[10px] flex items-center gap-1 active:scale-95 transition-all"
+                        title="Isi otomatis dengan persentase & nominal mitra standar"
+                      >
+                        <i data-lucide="layout-template" className="w-3.5 h-3.5"></i> Muat Template Kemitraan
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { setAllocations([]); if (showToast) showToast("Semua alokasi dibersihkan."); }}
+                        className="bg-red-50 hover:bg-red-100 text-red-700 dark:bg-red-950/20 dark:text-red-400 px-3 py-1.5 rounded-xl font-bold border border-red-100 dark:border-red-900 text-[10px] flex items-center gap-1 active:scale-95 transition-all"
+                        title="Hapus semua alokasi dari daftar"
+                      >
+                        <i data-lucide="trash-2" className="w-3.5 h-3.5"></i> Bersihkan Semua
+                      </button>
+                    </div>
+                    <span className="text-[10px] bg-slate-100 dark:bg-slate-800 px-2.5 py-1 rounded-full text-slate-500 font-bold">
+                      {allocations.length} Alokasi
+                    </span>
+                  </div>
+                  
+                  <div className="flex-1 overflow-x-auto">
+                    <table className="w-full text-left border-collapse text-xs">
+                      <thead>
+                        <tr className="bg-slate-50 dark:bg-slate-900/60 border-b border-slate-100 dark:border-slate-855 text-slate-400 font-bold uppercase tracking-wider text-[10px]">
+                          <th className="py-3.5 px-6">Nama Alokasi</th>
+                          <th className="py-3.5 px-6">Jenis</th>
+                          <th className="py-3.5 px-6 text-right">Nilai Input</th>
+                          <th className="py-3.5 px-6 text-right">Hasil Rupiah</th>
+                          <th className="py-3.5 px-6 text-center no-print">Aksi</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 dark:divide-slate-900/50">
+                        {allocations.length === 0 ? (
+                          <tr>
+                            <td colSpan="5" className="py-12 text-center text-slate-400 font-medium italic">
+                              Belum ada alokasi pembagian yang ditambahkan. Silakan tambahkan alokasi di atas.
+                            </td>
+                          </tr>
+                        ) : (
+                          allocations.map((a, idx) => {
+                            const calculatedVal = a.type === 'percent' ? (manualBaseProfit * (a.value / 100)) : a.value;
+                            return (
+                              <tr key={a.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-900/10">
+                                <td className="py-3 px-6 font-extrabold text-slate-855 dark:text-white">{a.name}</td>
+                                <td className="py-3 px-6">
+                                  <span className={`px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase ${
+                                    a.type === 'percent' ? 'bg-indigo-55 text-indigo-700 dark:bg-indigo-950/35 dark:text-indigo-400' : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300'
+                                  }`}>
+                                    {a.type === 'percent' ? 'Persentase' : 'Nominal Flat'}
+                                  </span>
+                                </td>
+                                <td className="py-3 px-6 text-right font-mono font-semibold">
+                                  {a.type === 'percent' ? `${a.value}%` : formatRupiah(a.value)}
+                                </td>
+                                <td className="py-3 px-6 text-right font-extrabold text-amber-600 dark:text-amber-400">
+                                  {formatRupiah(calculatedVal)}
+                                </td>
+                                <td className="py-3 px-6 text-center no-print">
+                                  <button
+                                    onClick={() => handleRemoveAllocation(a.id)}
+                                    className="p-1.5 bg-red-50 hover:bg-red-100 text-red-600 dark:bg-red-950/20 dark:text-red-400 rounded-lg active:scale-95 transition-all"
+                                    title="Hapus Alokasi"
+                                  >
+                                    <i data-lucide="trash-2" className="w-3.5 h-3.5"></i>
+                                  </button>
+                                </td>
+                              </tr>
+                            );
+                          })
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* Ringkasan & Sisa Laba */}
+                <div className="lg:col-span-4 space-y-6">
+                  <div className="bg-white dark:bg-slate-955 p-6 rounded-2xl border border-slate-150 dark:border-slate-850 shadow-sm space-y-4">
+                    <h4 className="font-bold text-[10px] text-slate-450 uppercase tracking-wider border-b pb-2 border-slate-100 dark:border-slate-900">
+                      Ringkasan Kalkulasi Manual
+                    </h4>
+                    <div className="space-y-3 text-xs">
+                      <div className="flex justify-between pb-2 border-b border-slate-100 dark:border-slate-900">
+                        <span className="text-slate-500 font-medium">Profit Acuan Utama</span>
+                        <span className="font-extrabold text-slate-800 dark:text-white">{formatRupiah(manualBaseProfit)}</span>
+                      </div>
+                      <div className="flex justify-between pb-2 border-b border-slate-100 dark:border-slate-900">
+                        <span className="text-slate-500 font-medium">Total Alokasi Pembagian</span>
+                        <span className="font-extrabold text-red-500">
+                          -{formatRupiah(allocations.reduce((sum, a) => sum + (a.type === 'percent' ? (manualBaseProfit * (a.value / 100)) : a.value), 0))}
+                        </span>
+                      </div>
+                      
+                      {/* Calculate remaining profit */}
+                      {(() => {
+                        const totalAllocated = allocations.reduce((sum, a) => sum + (a.type === 'percent' ? (manualBaseProfit * (a.value / 100)) : a.value), 0);
+                        const remaining = manualBaseProfit - totalAllocated;
+                        return (
+                          <>
+                            <div className="pt-3 flex justify-between font-extrabold text-sm border-t-2 border-dashed border-slate-200 dark:border-slate-800">
+                              <span>Sisa Laba Bersih Akhir</span>
+                              <span className={`text-base ${remaining >= 0 ? 'text-green-600' : 'text-red-655'}`}>
+                                {formatRupiah(remaining)}
+                              </span>
+                            </div>
+                            <div className="bg-slate-50 dark:bg-slate-900/60 p-3.5 rounded-xl border border-slate-100 dark:border-slate-850 text-[10px] leading-relaxed text-slate-450 dark:text-slate-400 mt-2 font-medium">
+                              Sisa Laba Bersih Akhir adalah profit acuan dikurangi seluruh alokasi kegunaan flat dan persentase yang Anda tambahkan.
+                            </div>
+                          </>
+                        );
+                      })()}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
           )}
         </div>
       );
     }
-
     // ==========================================
     function AuditLogsModule({ logs, globalSearch }) {
       const filtered = logs.filter(lg => 
@@ -8144,6 +8818,9 @@ function RekapLabaRugiModule({ invoices, buktiPembelian, globalSearch, settings,
 
       const filteredRooms = rooms.filter(r => r.id !== currentUser.username && r.name.toLowerCase().includes(searchTerm.toLowerCase()));
       const activeMessages = chatMessages.filter(m => {
+        // Filter out deleted messages if current user is not admin
+        if (m.isDeleted && currentUser?.role !== 'admin') return false;
+
         if (m.channelId === activeRoom) return true;
         if (m.channelId === 'direct') {
           return (m.sender === currentUser.username && m.receiver === activeRoom) ||
@@ -8188,6 +8865,54 @@ function RekapLabaRugiModule({ invoices, buktiPembelian, globalSearch, settings,
         };
         markAsRead();
       }, [activeRoom, chatMessages]);
+
+      const handleDeleteMessage = async (msgId) => {
+        if (confirm("Apakah Anda yakin ingin menghapus pesan ini?")) {
+          try {
+            const msgToUpdate = chatMessages.find(m => m.id === msgId);
+            if (msgToUpdate) {
+              const updatedMsg = { 
+                ...msgToUpdate, 
+                isDeleted: true,
+                deletedBy: currentUser.username,
+                deletedAt: new Date().toISOString()
+              };
+              await saveToStore('chat_messages', updatedMsg);
+              reloadData();
+              if (showToast) showToast("Pesan berhasil dihapus.");
+            }
+          } catch (err) {
+            console.error("Gagal menghapus pesan:", err);
+            if (showToast) showToast("Gagal menghapus pesan.", "error");
+          }
+        }
+      };
+
+      const handleClearChat = async () => {
+        if (!activeRoom || activeMessages.length === 0) return;
+        const confirmMsg = `Apakah Anda yakin ingin mengosongkan semua pesan di chat room "${selectedRoomObj?.name || activeRoom}"? Tindakan ini akan menghapus pesan secara permanen untuk seluruh pengguna.`;
+        if (confirm(confirmMsg)) {
+          try {
+            const promises = activeMessages
+              .filter(m => !m.isDeleted)
+              .map(m => {
+                const updatedMsg = {
+                  ...m,
+                  isDeleted: true,
+                  deletedBy: currentUser.username,
+                  deletedAt: new Date().toISOString()
+                };
+                return saveToStore('chat_messages', updatedMsg);
+              });
+            await Promise.all(promises);
+            reloadData();
+            if (showToast) showToast("Chat room berhasil dikosongkan.");
+          } catch (err) {
+            console.error("Gagal mengosongkan chat:", err);
+            if (showToast) showToast("Gagal mengosongkan chat.", "error");
+          }
+        }
+      };
 
       const handleSendMessage = async (e) => {
         if (e) e.preventDefault();
@@ -8574,6 +9299,15 @@ function RekapLabaRugiModule({ invoices, buktiPembelian, globalSearch, settings,
                     <button onClick={() => handleStartCall('video')} className="bg-slate-50 hover:bg-slate-100 dark:bg-slate-900 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 text-[10px] font-bold p-2.5 rounded-xl border border-slate-250/60 dark:border-slate-800 flex items-center justify-center transition-all mr-1" title={selectedRoomObj.type === 'channel' ? "Mulai Rapat Video Grup" : "Mulai Panggilan Video"}><i data-lucide="video" className="w-4 h-4 text-slate-550 dark:text-slate-350"></i></button>
                   </>
                 )}
+                {activeMessages.length > 0 && (
+                  <button 
+                    onClick={handleClearChat} 
+                    className="bg-red-50 hover:bg-red-100 dark:bg-red-950/20 dark:hover:bg-red-900/30 text-red-655 dark:text-red-450 text-[10px] font-bold px-3 py-2 rounded-xl border border-red-100 dark:border-red-900 flex items-center gap-1.5 transition-all mr-1" 
+                    title="Hapus semua pesan di room ini"
+                  >
+                    <i data-lucide="trash-2" className="w-3.5 h-3.5 text-red-655"></i> Kosongkan Chat
+                  </button>
+                )}
                 <button onClick={handleMarkAllRead} className="bg-slate-100 hover:bg-slate-200 dark:bg-slate-805 dark:hover:bg-slate-705 text-slate-700 dark:text-slate-200 text-[10px] font-bold px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 flex items-center gap-1.5 transition-all" title="Tandai semua pesan di aplikasi telah dibaca"><i data-lucide="check-check" className="w-3.5 h-3.5 text-primary-600 dark:text-primary-400"></i> Tandai Semua Dibaca</button>
               </div>
             </div>
@@ -8590,9 +9324,22 @@ function RekapLabaRugiModule({ invoices, buktiPembelian, globalSearch, settings,
               ) : (
                 activeMessages.map((msg) => {
                   const isSelf = msg.sender === currentUser.username;
+                  const canDelete = !msg.isDeleted && (isSelf || currentUser?.role === 'admin');
                   return (
-                    <div key={msg.id} className={`flex items-start gap-3.5 ${isSelf ? 'justify-end' : 'justify-start'}`}>
+                    <div key={msg.id} className={`flex items-start gap-3.5 group ${isSelf ? 'justify-end' : 'justify-start'}`}>
                       {!isSelf && (userPhotos[msg.sender] ? <img src={userPhotos[msg.sender]} className="w-8 h-8 rounded-full object-cover flex-shrink-0 border border-slate-250/20" /> : <div className="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-750 dark:text-slate-300 flex items-center justify-center font-black uppercase flex-shrink-0 text-xs">{msg.sender[0]}</div>)}
+                      
+                      {isSelf && canDelete && (
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteMessage(msg.id)}
+                          className="opacity-0 group-hover:opacity-100 p-1.5 bg-slate-100 hover:bg-red-50 text-slate-400 hover:text-red-655 dark:bg-slate-900 dark:hover:bg-red-955/40 dark:text-slate-500 dark:hover:text-red-400 rounded-xl active:scale-95 transition-all self-center no-print"
+                          title="Hapus Pesan"
+                        >
+                          <i data-lucide="trash-2" className="w-3 h-3"></i>
+                        </button>
+                      )}
+
                       <div className={`max-w-[70%] space-y-1 ${isSelf ? 'text-right' : 'text-left'}`}>
                         {!isSelf && (
                           <div className="flex items-center gap-2">
@@ -8602,6 +9349,44 @@ function RekapLabaRugiModule({ invoices, buktiPembelian, globalSearch, settings,
                         )}
                         {(() => {
                           const content = msg.content || '';
+                          if (msg.isDeleted) {
+                            const isSticker = content.startsWith('[stiker:') && content.endsWith(']');
+                            const isImage = content.startsWith('[image:') && content.endsWith(']');
+                            const isFile = content.startsWith('[file:') && content.endsWith(']');
+                            const isAudio = content.startsWith('[audio:') && content.endsWith(']');
+                            
+                            let renderedMedia;
+                            if (isSticker) {
+                              const key = content.slice(8, -1);
+                              const sticker = STICKERS[key];
+                              renderedMedia = sticker ? <div className="py-1 inline-block opacity-45 grayscale" title={sticker.name}><div className="w-20 h-20 drop-shadow-md" dangerouslySetInnerHTML={{ __html: sticker.svg }} /></div> : null;
+                            } else if (isImage) {
+                              renderedMedia = <img src={content.slice(7, -1)} className="max-w-[150px] rounded-xl object-cover opacity-40 grayscale border" alt="Gambar Dihapus" />;
+                            } else if (isFile) {
+                              const parts = content.slice(6, -1).split(':');
+                              renderedMedia = <div className="text-[10px] text-slate-450 dark:text-slate-500 font-bold leading-snug truncate max-w-[150px] line-through">{parts[0]}</div>;
+                            } else if (isAudio) {
+                              renderedMedia = <span className="text-[10px] text-slate-450 dark:text-slate-500 italic line-through">[Rekaman Suara Dihapus]</span>;
+                            } else {
+                              renderedMedia = <div className="line-through break-all text-xs font-semibold leading-relaxed">{content}</div>;
+                            }
+
+                            return (
+                              <div className={`p-3 rounded-2xl flex flex-col gap-1 border border-dashed text-left shadow-sm ${
+                                isSelf 
+                                  ? 'bg-red-50/20 dark:bg-red-955/5 border-red-300 dark:border-red-900/60 text-red-650 dark:text-red-400 rounded-tr-none' 
+                                  : 'bg-slate-50/50 dark:bg-slate-900/40 border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 rounded-tl-none'
+                              }`}>
+                                <div className="flex items-center gap-1 text-[8px] font-black uppercase tracking-wider text-red-500 dark:text-red-450 mb-0.5">
+                                  <i data-lucide="trash-2" className="w-3 h-3 text-red-550"></i> Pesan Dihapus
+                                </div>
+                                {renderedMedia}
+                                <div className="text-[8px] text-slate-400 dark:text-slate-500 mt-1 font-bold">
+                                  Oleh {msg.deletedBy} • {new Date(msg.deletedAt).toLocaleTimeString('id-ID')}
+                                </div>
+                              </div>
+                            );
+                          }
                           if (content.startsWith('[stiker:') && content.endsWith(']')) {
                             const key = content.slice(8, -1);
                             const sticker = STICKERS[key];
@@ -8610,7 +9395,7 @@ function RekapLabaRugiModule({ invoices, buktiPembelian, globalSearch, settings,
                           if (content.startsWith('[call:') && content.endsWith(']')) {
                             const parts = content.slice(6, -1).split(':');
                             const isVoice = parts[0] === 'voice';
-                            return <div className={`p-3 rounded-2xl flex items-center gap-3 border shadow-sm ${isSelf ? 'bg-primary-50 dark:bg-primary-955/20 text-primary-850 dark:text-primary-300 border-primary-200 dark:border-primary-800 rounded-tr-none' : 'bg-slate-100 dark:bg-slate-900 text-slate-800 dark:text-slate-200 border-slate-200 dark:border-slate-800 rounded-tl-none'}`}><div className={`w-8 h-8 rounded-full flex items-center justify-center ${isSelf ? 'bg-primary-100 text-primary-700' : 'bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400'}`}><i data-lucide={isVoice ? "phone" : "video"} className="w-4 h-4"></i></div><div className="text-left"><div className="font-extrabold text-[11px] leading-tight">{isVoice ? 'Panggilan Suara' : 'Panggilan Video'}</div><span className="text-[9px] font-bold text-slate-450 dark:text-slate-455 block mt-0.5">Panggilan selesai • {parts[1]}:{parts[2]}</span></div></div>;
+                            return <div className={`p-3 rounded-2xl flex items-center gap-3 border shadow-sm ${isSelf ? 'bg-primary-50 dark:bg-primary-955/20 text-primary-850 dark:text-primary-300 border-primary-200 dark:border-primary-800 rounded-tr-none' : 'bg-slate-100 dark:bg-slate-900 text-slate-800 dark:text-slate-200 border-slate-200 dark:border-slate-800 rounded-tl-none'}`}><div className={`w-8 h-8 rounded-full flex items-center justify-center ${isSelf ? 'bg-primary-100 text-primary-700' : 'bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400'}`}><i data-lucide={isVoice ? "phone" : "video"} className="w-4 h-4"></i></div><div className="text-left"><div className="font-extrabold text-[11px] leading-tight">{isVoice ? 'Panggilan Suara' : 'Panggilan Video'}</div><span className="text-[9px] font-bold text-slate-450 dark:text-slate-455 block mt-0.5">Panggilan selesai   {parts[1]}:{parts[2]}</span></div></div>;
                           }
                           if (content.startsWith('[groupcall:') && content.endsWith(']')) {
                             const parts = content.slice(11, -1).split(':');
@@ -8618,7 +9403,7 @@ function RekapLabaRugiModule({ invoices, buktiPembelian, globalSearch, settings,
                             const duration = parts[1] + ':' + parts[2];
                             const participants = parts[3] || '4';
                             const isVoice = type === 'voice';
-                            return <div className={`p-3 rounded-2xl flex items-center gap-3 border shadow-sm ${isSelf ? 'bg-primary-50 dark:bg-primary-955/20 text-primary-850 dark:text-primary-300 border-primary-200 dark:border-primary-800 rounded-tr-none' : 'bg-slate-100 dark:bg-slate-900 text-slate-800 dark:text-slate-200 border-slate-200 dark:border-slate-800 rounded-tl-none'}`}><div className={`w-8 h-8 rounded-full flex items-center justify-center ${isSelf ? 'bg-primary-100 text-primary-700' : 'bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400'}`}><i data-lucide="users" className="w-4 h-4"></i></div><div className="text-left"><div className="font-extrabold text-[11px] leading-tight">{isVoice ? 'Rapat Suara Grup' : 'Rapat Video Grup'}</div><span className="text-[9px] font-bold text-slate-450 dark:text-slate-455 block mt-0.5">Rapat selesai • {duration} • {participants} peserta</span></div></div>;
+                            return <div className={`p-3 rounded-2xl flex items-center gap-3 border shadow-sm ${isSelf ? 'bg-primary-50 dark:bg-primary-955/20 text-primary-850 dark:text-primary-300 border-primary-200 dark:border-primary-800 rounded-tr-none' : 'bg-slate-100 dark:bg-slate-900 text-slate-800 dark:text-slate-200 border-slate-200 dark:border-slate-800 rounded-tl-none'}`}><div className={`w-8 h-8 rounded-full flex items-center justify-center ${isSelf ? 'bg-primary-100 text-primary-700' : 'bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400'}`}><i data-lucide="users" className="w-4 h-4"></i></div><div className="text-left"><div className="font-extrabold text-[11px] leading-tight">{isVoice ? 'Rapat Suara Grup' : 'Rapat Video Grup'}</div><span className="text-[9px] font-bold text-slate-450 dark:text-slate-455 block mt-0.5">Rapat selesai   {duration}   {participants} peserta</span></div></div>;
                           }
                           if (content.startsWith('[audio:') && content.endsWith(']')) return <div className={`p-2.5 rounded-2xl shadow-sm min-w-[200px] flex items-center ${isSelf ? 'bg-primary-600 text-white rounded-tr-none' : 'bg-white dark:bg-slate-900 border border-slate-150 dark:border-slate-850 text-slate-800 dark:text-slate-200 rounded-tl-none'}`}><audio src={content.slice(7, -1)} controls className="w-full h-7 accent-primary-650 opacity-90" /></div>;
                           if (content.startsWith('[image:') && content.endsWith(']')) return <div className="py-1 inline-block"><img src={content.slice(7, -1)} onClick={() => setLightboxImage(content.slice(7, -1))} className="max-w-[220px] max-h-[160px] rounded-xl object-cover cursor-pointer hover:opacity-90 shadow-md border-2 border-white dark:border-slate-800 transition-all hover:scale-[1.02] duration-200" alt="Gambar Terkirim" /></div>;
@@ -8634,6 +9419,18 @@ function RekapLabaRugiModule({ invoices, buktiPembelian, globalSearch, settings,
                           {isSelf ? (((msg.channelId === 'direct' ? (msg.readBy || []).includes(msg.receiver) : (msg.readBy || []).filter(u => u !== currentUser.username).length > 0) ? <span className="text-sky-400" title="Sudah Dibaca"><i data-lucide="check-check" className="w-3.5 h-3.5 inline"></i></span> : <span className="text-slate-300 dark:text-slate-500" title="Terkirim"><i data-lucide="check" className="w-3.5 h-3.5 inline"></i></span>)) : (!(msg.readBy || []).includes(currentUser.username) && <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block ml-1" title="Baru / Belum Dibaca"></span>)}
                         </div>
                       </div>
+
+                      {!isSelf && canDelete && (
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteMessage(msg.id)}
+                          className="opacity-0 group-hover:opacity-100 p-1.5 bg-slate-100 hover:bg-red-50 text-slate-400 hover:text-red-655 dark:bg-slate-900 dark:hover:bg-red-955/40 dark:text-slate-500 dark:hover:text-red-400 rounded-xl active:scale-95 transition-all self-center no-print"
+                          title="Hapus Pesan"
+                        >
+                          <i data-lucide="trash-2" className="w-3 h-3"></i>
+                        </button>
+                      )}
+
                       {isSelf && (userPhotos[msg.sender] ? <img src={userPhotos[msg.sender]} className="w-8 h-8 rounded-full object-cover flex-shrink-0 border border-slate-250/20" /> : <div className="w-8 h-8 rounded-full bg-primary-600/10 text-primary-600 dark:text-primary-400 flex items-center justify-center font-black uppercase flex-shrink-0 text-xs">{msg.sender[0]}</div>)}
                     </div>
                   );
