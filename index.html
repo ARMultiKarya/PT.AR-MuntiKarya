@@ -1722,6 +1722,30 @@
           });
         };
       }, [currentUser]);
+      
+      // Auto-sync polling for chat messages (every 3 seconds)
+      React.useEffect(() => {
+        if (!currentUser) return;
+        const interval = setInterval(async () => {
+          try {
+            const chats = await getAllFromStore('chat_messages');
+            setChatMessages(prev => {
+              if (prev.length !== chats.length) return chats;
+              let changed = false;
+              for (let i = 0; i < chats.length; i++) {
+                if (!prev[i] || prev[i].id !== chats[i].id || JSON.stringify(prev[i].readBy) !== JSON.stringify(chats[i].readBy)) {
+                  changed = true;
+                  break;
+                }
+              }
+              return changed ? chats : prev;
+            });
+          } catch (e) {
+            console.error("Gagal sinkronisasi chat:", e);
+          }
+        }, 3000);
+        return () => clearInterval(interval);
+      }, [currentUser]);
 
       const showToast = (message, type = 'success') => {
         const id = Date.now();
