@@ -312,8 +312,9 @@
       if (mysqlApiUrl) {
         return callMySQL(storeName, 'GET');
       }
-      if (supabaseClient) {
-        return supabaseClient
+      const client = supabaseClient;
+      if (client) {
+        return client
           .from(storeName)
           .select('*')
           .then(async ({ data, error }) => {
@@ -322,14 +323,14 @@
               throw error;
             }
             if (storeName === 'po' && data) {
-              const { data: items, error: itemsErr } = await supabaseClient.from('po_items').select('*');
+              const { data: items, error: itemsErr } = await client.from('po_items').select('*');
               if (!itemsErr && items) {
                 data.forEach(p => {
                   p.items = items.filter(it => it.poId === p.id);
                 });
               }
             } else if (storeName === 'bukti_pembelian' && data) {
-              const { data: items, error: itemsErr } = await supabaseClient.from('bukti_pembelian_items').select('*');
+              const { data: items, error: itemsErr } = await client.from('bukti_pembelian_items').select('*');
               if (!itemsErr && items) {
                 data.forEach(b => {
                   b.items = items.filter(it => it.buktiPembelianId === b.id).map(it => ({
@@ -340,7 +341,7 @@
                 });
               }
             } else if (storeName === 'invoice_jual' && data) {
-              const { data: items, error: itemsErr } = await supabaseClient.from('invoice_jual_items').select('*');
+              const { data: items, error: itemsErr } = await client.from('invoice_jual_items').select('*');
               if (!itemsErr && items) {
                 data.forEach(inv => {
                   inv.items = items.filter(it => it.invoiceJualId === inv.id);
@@ -368,8 +369,9 @@
       if (mysqlApiUrl) {
         return callMySQL(storeName, 'GET', null, key);
       }
-      if (supabaseClient) {
-        return supabaseClient
+      const client = supabaseClient;
+      if (client) {
+        return client
           .from(storeName)
           .select('*')
           .eq('id', key)
@@ -381,10 +383,10 @@
             }
             if (data) {
               if (storeName === 'po') {
-                const { data: items, error: itemsErr } = await supabaseClient.from('po_items').select('*').eq('poId', data.id);
+                const { data: items, error: itemsErr } = await client.from('po_items').select('*').eq('poId', data.id);
                 if (!itemsErr && items) data.items = items;
               } else if (storeName === 'bukti_pembelian') {
-                const { data: items, error: itemsErr } = await supabaseClient.from('bukti_pembelian_items').select('*').eq('buktiPembelianId', data.id);
+                const { data: items, error: itemsErr } = await client.from('bukti_pembelian_items').select('*').eq('buktiPembelianId', data.id);
                 if (!itemsErr && items) {
                   data.items = items.map(it => ({
                     barangId: it.barangId,
@@ -393,7 +395,7 @@
                   }));
                 }
               } else if (storeName === 'invoice_jual') {
-                const { data: items, error: itemsErr } = await supabaseClient.from('invoice_jual_items').select('*').eq('invoiceJualId', data.id);
+                const { data: items, error: itemsErr } = await client.from('invoice_jual_items').select('*').eq('invoiceJualId', data.id);
                 if (!itemsErr && items) data.items = items;
               }
             }
@@ -419,13 +421,14 @@
       if (mysqlApiUrl) {
         return callMySQL(storeName, 'POST', data).then(res => res.id);
       }
-      if (supabaseClient) {
+      const client = supabaseClient;
+      if (client) {
         const { items, ...mainData } = data;
         const originalId = mainData.id;
         if (mainData.id === undefined || mainData.id === null || mainData.id === '') {
           delete mainData.id;
         }
-        let savePromise = supabaseClient
+        let savePromise = client
           .from(storeName)
           .upsert(mainData)
           .select();
@@ -441,7 +444,7 @@
             throw new Error(`Gagal mendapatkan ID untuk data yang disimpan di ${storeName}`);
           }
           if (storeName === 'po' && items) {
-            await supabaseClient.from('po_items').delete().eq('poId', finalId);
+            await client.from('po_items').delete().eq('poId', finalId);
             const itemsToInsert = items.map(it => ({
               poId: finalId,
               barangId: Number(it.barangId),
@@ -450,10 +453,10 @@
               total: Number(it.total)
             }));
             if (itemsToInsert.length > 0) {
-              await supabaseClient.from('po_items').insert(itemsToInsert);
+              await client.from('po_items').insert(itemsToInsert);
             }
           } else if (storeName === 'bukti_pembelian' && items) {
-            await supabaseClient.from('bukti_pembelian_items').delete().eq('buktiPembelianId', finalId);
+            await client.from('bukti_pembelian_items').delete().eq('buktiPembelianId', finalId);
             const itemsToInsert = items.map(it => ({
               buktiPembelianId: finalId,
               barangId: Number(it.barangId),
@@ -461,10 +464,10 @@
               unitCost: Number(it.unitCost)
             }));
             if (itemsToInsert.length > 0) {
-              await supabaseClient.from('bukti_pembelian_items').insert(itemsToInsert);
+              await client.from('bukti_pembelian_items').insert(itemsToInsert);
             }
           } else if (storeName === 'invoice_jual' && items) {
-            await supabaseClient.from('invoice_jual_items').delete().eq('invoiceJualId', finalId);
+            await client.from('invoice_jual_items').delete().eq('invoiceJualId', finalId);
             const itemsToInsert = items.map(it => ({
               invoiceJualId: finalId,
               barangId: Number(it.barangId),
@@ -474,7 +477,7 @@
               hpp: Number(it.hpp || 0)
             }));
             if (itemsToInsert.length > 0) {
-              await supabaseClient.from('invoice_jual_items').insert(itemsToInsert);
+              await client.from('invoice_jual_items').insert(itemsToInsert);
             }
           }
           return finalId;
