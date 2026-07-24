@@ -213,8 +213,9 @@
     // --- SUPABASE CLOUD DATABASE SETUP ---
     const DEFAULT_SUPABASE_URL = 'https://rmicglwqmulpbkvjvduw.supabase.co';
     const DEFAULT_SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJtaWNnbHdxbXVscGJrdmp2ZHV3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ3MjgwMjgsImV4cCI6MjEwMDMwNDAyOH0.Ypkd4CPXI4POYZ7hEi_29USe6eYXO_0vYnkywvNSBs0';
-    let supabaseUrl = localStorage.getItem('pt_ar_supabase_url') || DEFAULT_SUPABASE_URL;
-    let supabaseKey = localStorage.getItem('pt_ar_supabase_key') || DEFAULT_SUPABASE_KEY;
+    let isSupabaseDisabled = localStorage.getItem('pt_ar_supabase_disabled') === 'true';
+    let supabaseUrl = isSupabaseDisabled ? '' : (localStorage.getItem('pt_ar_supabase_url') || DEFAULT_SUPABASE_URL);
+    let supabaseKey = isSupabaseDisabled ? '' : (localStorage.getItem('pt_ar_supabase_key') || DEFAULT_SUPABASE_KEY);
     let supabaseClient = null;
 
     function initSupabase() {
@@ -1630,45 +1631,50 @@
 
       // Reload databases helper
       const reloadData = async () => {
-        const sup = await getAllFromStore('suppliers');
-        const brg = await getAllFromStore('barang');
-        const prc = await getAllFromStore('price_lists');
-        const cust = await getAllFromStore('customers');
-        const po = await getAllFromStore('po');
-        const bkt = await getAllFromStore('bukti_pembelian');
-        const inv = await getAllFromStore('invoice_jual');
-        const lg = await getAllFromStore('logs');
-        const chats = await getAllFromStore('chat_messages');
-        const sett = await getFromStore('settings', 'pt_ar_multi_karya_profile');
+        try {
+          const sup = await getAllFromStore('suppliers');
+          const brg = await getAllFromStore('barang');
+          const prc = await getAllFromStore('price_lists');
+          const cust = await getAllFromStore('customers');
+          const po = await getAllFromStore('po');
+          const bkt = await getAllFromStore('bukti_pembelian');
+          const inv = await getAllFromStore('invoice_jual');
+          const lg = await getAllFromStore('logs');
+          const chats = await getAllFromStore('chat_messages');
+          const sett = await getFromStore('settings', 'pt_ar_multi_karya_profile');
 
-        setSuppliers(sup);
-        setBarangList(brg);
-        setPriceLists(prc);
-        setCustomers(cust);
-        setPoList(po);
-        setBuktiPembelian(bkt);
-        setInvoices(inv);
-        setLogs(lg.reverse().slice(0, 50));
-        setChatMessages(chats);
-        if (sett) setSettings(sett);
+          setSuppliers(sup);
+          setBarangList(brg);
+          setPriceLists(prc);
+          setCustomers(cust);
+          setPoList(po);
+          setBuktiPembelian(bkt);
+          setInvoices(inv);
+          setLogs(lg.reverse().slice(0, 50));
+          setChatMessages(chats);
+          if (sett) setSettings(sett);
 
-        // Check for items with no price list update in last 7 days
-        const alerts = [];
-        brg.forEach(b => {
-          const history = prc.filter(p => p.barangId === b.id);
-          if (history.length === 0) {
-            alerts.push(b.name);
-          } else {
-            history.sort((a, b) => new Date(b.effectiveDate) - new Date(a.effectiveDate));
-            const latestDate = new Date(history[0].effectiveDate);
-            const diffTime = Math.abs(new Date() - latestDate);
-            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-            if (diffDays > 7) {
+          // Check for items with no price list update in last 7 days
+          const alerts = [];
+          brg.forEach(b => {
+            const history = prc.filter(p => p.barangId === b.id);
+            if (history.length === 0) {
               alerts.push(b.name);
+            } else {
+              history.sort((a, b) => new Date(b.effectiveDate) - new Date(a.effectiveDate));
+              const latestDate = new Date(history[0].effectiveDate);
+              const diffTime = Math.abs(new Date() - latestDate);
+              const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+              if (diffDays > 7) {
+                alerts.push(b.name);
+              }
             }
-          }
-        });
-        setPriceAlerts(alerts);
+          });
+          setPriceAlerts(alerts);
+        } catch (err) {
+          console.error("Gagal reload data database:", err);
+          showToast("Koneksi database terputus. Silakan hubungkan server database atau periksa koneksi Anda.", "error");
+        }
       };
 
       React.useEffect(() => {
@@ -7556,22 +7562,26 @@ function RekapLabaRugiModule({ invoices, buktiPembelian, globalSearch, settings,
         if (cleanedUrl.endsWith('/')) {
           cleanedUrl = cleanedUrl.slice(0, -1);
         }
+        localStorage.removeItem('pt_ar_supabase_disabled');
         localStorage.setItem('pt_ar_supabase_url', cleanedUrl);
         localStorage.setItem('pt_ar_supabase_key', sKey.trim());
         supabaseUrl = cleanedUrl;
         supabaseKey = sKey.trim();
+        isSupabaseDisabled = false;
         initSupabase();
         showToast('Koneksi Supabase berhasil diperbarui.');
         reloadData();
       };
 
       const handleDisconnectSupabase = () => {
+        localStorage.setItem('pt_ar_supabase_disabled', 'true');
         localStorage.removeItem('pt_ar_supabase_url');
         localStorage.removeItem('pt_ar_supabase_key');
         setSUrl('');
         setSKey('');
         supabaseUrl = '';
         supabaseKey = '';
+        isSupabaseDisabled = true;
         supabaseClient = null;
         showToast('Koneksi Supabase dinonaktifkan.');
         reloadData();
