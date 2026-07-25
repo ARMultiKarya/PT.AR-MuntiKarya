@@ -2578,6 +2578,40 @@
       const [email, setEmail] = React.useState('');
       const [address, setAddress] = React.useState('');
 
+      // Bulk Selection States
+      const [selectedIds, setSelectedIds] = React.useState([]);
+      const [showSelectedOnly, setShowSelectedOnly] = React.useState(false);
+
+      React.useEffect(() => {
+        setSelectedIds([]);
+      }, [suppliers]);
+
+      React.useEffect(() => {
+        if (window.lucide) {
+          window.lucide.createIcons();
+        }
+      }, [selectedIds.length, showSelectedOnly]);
+
+      const handleDeleteSelected = async () => {
+        if (confirm(`Apakah Anda yakin ingin menghapus ${selectedIds.length} supplier terpilih?`)) {
+          try {
+            for (const id of selectedIds) {
+              const sup = suppliers.find(s => s.id === id);
+              if (sup) {
+                await deleteFromStore('suppliers', id);
+                await logActivity('Hapus Supplier', `Supplier ${sup.name} (${sup.code}) dihapus secara massal.`);
+              }
+            }
+            showToast(`${selectedIds.length} supplier berhasil dihapus.`, 'error');
+            setSelectedIds([]);
+            reloadData();
+          } catch (err) {
+            console.error(err);
+            showToast('Gagal menghapus beberapa supplier.', 'error');
+          }
+        }
+      };
+
       const openModal = (mode, sup = null) => {
         if (mode === 'edit' && sup) {
           setEditSupplier(sup);
@@ -2710,14 +2744,13 @@
         XLSX.utils.book_append_sheet(wb, ws, 'Suppliers');
         XLSX.writeFile(wb, 'Data_Supplier_PT_AR.xlsx');
         logActivity('Export Supplier', 'Data supplier diexport ke Excel.');
-        showToast('Data supplier berhasil diexport ke Excel.');
-      };
-
-      const filtered = suppliers.filter(s => 
+        showToast('Data s      const filtered = suppliers.filter(s => 
         s.name.toLowerCase().includes(globalSearch.toLowerCase()) ||
         s.code.toLowerCase().includes(globalSearch.toLowerCase()) ||
         s.address.toLowerCase().includes(globalSearch.toLowerCase())
       );
+
+      const displayed = showSelectedOnly ? filtered.filter(s => selectedIds.includes(s.id)) : filtered;
 
       return (
         <div className="space-y-6 animate-fade-in">
@@ -2751,10 +2784,53 @@
             </div>
           </div>
 
+          {/* Action Panel for Bulk Actions */}
+          <div className="bg-white dark:bg-slate-955 p-4 rounded-2xl border border-slate-150 dark:border-slate-850 flex items-center justify-between text-xs font-semibold no-print shadow-sm gap-2">
+            <div className="flex items-center gap-2">
+              <button 
+                type="button"
+                onClick={() => setShowSelectedOnly(!showSelectedOnly)}
+                className={`px-3 py-2 rounded-xl text-xs font-bold transition-all border flex items-center gap-1.5 ${
+                  showSelectedOnly 
+                    ? 'bg-amber-600 border-amber-600 text-white hover:bg-amber-700' 
+                    : 'bg-white hover:bg-slate-50 border-slate-200 dark:bg-slate-900 dark:hover:bg-slate-800 dark:border-slate-800 text-slate-700 dark:text-slate-200'
+                }`}
+              >
+                <i data-lucide={showSelectedOnly ? "eye" : "eye-off"} className="w-3.5 h-3.5"></i>
+                {showSelectedOnly ? 'Tampilkan Semua' : `Tampilkan Terpilih (${selectedIds.length})`}
+              </button>
+            </div>
+            {!isReadOnly && selectedIds.length > 0 && (
+              <button
+                type="button"
+                onClick={handleDeleteSelected}
+                className="bg-red-600 hover:bg-red-700 text-white text-xs font-semibold px-4 py-2 rounded-xl shadow-lg shadow-red-950/10 flex items-center gap-1.5 transition-all"
+              >
+                <i data-lucide="trash-2" className="w-3.5 h-3.5"></i> Hapus Terpilih ({selectedIds.length})
+              </button>
+            )}
+          </div>
+
           <div className="bg-white dark:bg-slate-955 rounded-2xl border border-slate-150 dark:border-slate-850 shadow-sm overflow-hidden">
             <table className="w-full text-left border-collapse text-xs">
               <thead>
                 <tr className="bg-slate-50 dark:bg-slate-900/60 border-b border-slate-100 dark:border-slate-850 text-slate-400 font-bold uppercase tracking-wider text-[10px]">
+                  <th className="py-4 px-6 w-12 text-center">
+                    <input 
+                      type="checkbox"
+                      checked={filtered.length > 0 && filtered.every(s => selectedIds.includes(s.id))}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          const idsToAdd = filtered.map(s => s.id);
+                          setSelectedIds(prev => [...new Set([...prev, ...idsToAdd])]);
+                        } else {
+                          const idsToRemove = filtered.map(s => s.id);
+                          setSelectedIds(prev => prev.filter(id => !idsToRemove.includes(id)));
+                        }
+                      }}
+                      className="rounded text-primary-600 focus:ring-primary-500 border-slate-350 w-4 h-4 cursor-pointer"
+                    />
+                  </th>
                   <th className="py-4 px-6">Kode</th>
                   <th className="py-4 px-6">Nama Supplier</th>
                   <th className="py-4 px-6">No. Telepon</th>
@@ -2764,15 +2840,29 @@
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-900/50">
-                {filtered.length === 0 ? (
+                {displayed.length === 0 ? (
                   <tr>
-                    <td colSpan={isReadOnly ? "5" : "6"} className="py-8 text-center text-slate-400 font-medium">Tidak ada data supplier ditemukan.</td>
+                    <td colSpan={isReadOnly ? "6" : "7"} className="py-8 text-center text-slate-400 font-medium">Tidak ada data supplier ditemukan.</td>
                   </tr>
                 ) : (
-                  filtered.map(sup => (
+                  displayed.map(sup => (
                     <tr key={sup.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-900/10">
+                      <td className="py-4 px-6 w-12 text-center">
+                        <input 
+                          type="checkbox"
+                          checked={selectedIds.includes(sup.id)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setSelectedIds(prev => [...prev, sup.id]);
+                            } else {
+                              setSelectedIds(prev => prev.filter(id => id !== sup.id));
+                            }
+                          }}
+                          className="rounded text-primary-600 focus:ring-primary-500 border-slate-350 w-4 h-4 cursor-pointer"
+                        />
+                      </td>
                       <td className="py-4 px-6 font-mono font-bold text-primary-600 dark:text-primary-400">{sup.code}</td>
-                      <td className="py-4 px-6 font-extrabold text-slate-850 dark:text-white">{sup.name}</td>
+                      <td className="py-4 px-6 font-extrabold text-slate-855 dark:text-white">{sup.name}</td>
                       <td className="py-4 px-6 font-medium text-slate-500">{sup.phone}</td>
                       <td className="py-4 px-6 font-medium text-slate-500">{sup.email}</td>
                       <td className="py-4 px-6 text-slate-500 font-semibold max-w-xs truncate">{sup.address}</td>
@@ -2798,6 +2888,8 @@
                   ))
                 )}
               </tbody>
+            </table>
+          </div>    </tbody>
             </table>
           </div>
 
