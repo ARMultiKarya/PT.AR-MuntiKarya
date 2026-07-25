@@ -3356,21 +3356,67 @@
             const ws = wb.Sheets[wsname];
             const data = XLSX.utils.sheet_to_json(ws, { header: 1 });
 
-            // Expect headers: Nama Barang, Harga Beli, Harga Jual, Tanggal Berlaku
+            if (!data || data.length <= 1) {
+              showToast('File Excel kosong atau hanya berisi baris header.', 'error');
+              return;
+            }
+
+            // Detect headers dynamically
+            const headers = data[0].map(h => String(h || '').trim().toLowerCase());
+            
+            let nameIdx = headers.indexOf('nama barang');
+            let beliIdx = headers.indexOf('harga beli');
+            let jualIdx = headers.indexOf('harga jual');
+            let dateIdx = headers.indexOf('tanggal berlaku');
+
+            // Substring mapping to allow variations in header names
+            if (nameIdx === -1) nameIdx = headers.findIndex(h => h.includes('nama') || h.includes('barang') || h.includes('item'));
+            if (beliIdx === -1) beliIdx = headers.findIndex(h => h.includes('beli') || h.includes('harga beli') || h.includes('cost'));
+            if (jualIdx === -1) jualIdx = headers.findIndex(h => h.includes('jual') || h.includes('harga jual') || h.includes('price'));
+            if (dateIdx === -1) dateIdx = headers.findIndex(h => h.includes('tanggal') || h.includes('date') || h.includes('berlaku'));
+
+            // Fallback to default indices if still not found
+            if (nameIdx === -1) nameIdx = 0;
+            if (beliIdx === -1) beliIdx = 1;
+            if (jualIdx === -1) jualIdx = 2;
+            if (dateIdx === -1) dateIdx = 3;
+
             let importedCount = 0;
+            let skippedEmptyCount = 0;
+            let skippedNotFoundNames = [];
+
             for (let i = 1; i < data.length; i++) {
               const row = data[i];
-              if (!row || row.length < 2) continue;
+              if (!row || row.length === 0) continue;
 
-              const rBarangName = row[0] ? String(row[0]).trim() : '';
-              const rHargaBeli = row[1] ? Number(row[1]) : 0;
-              const rHargaJual = row[2] ? Number(row[2]) : 0;
-              const rDate = row[3] ? String(row[3]).trim() : new Date().toISOString().split('T')[0];
+              const rBarangName = row[nameIdx] ? String(row[nameIdx]).trim() : '';
+              const rHargaBeli = row[beliIdx] ? Number(row[beliIdx]) : 0;
+              const rHargaJual = row[jualIdx] ? Number(row[jualIdx]) : 0;
+              
+              // Handle Excel date format or string date format
+              let rDate = '';
+              if (row[dateIdx]) {
+                if (typeof row[dateIdx] === 'number' && row[dateIdx] > 40000) {
+                  // Handle Excel serial date
+                  const dateObj = new Date((row[dateIdx] - 25569) * 86400 * 1000);
+                  rDate = dateObj.toISOString().split('T')[0];
+                } else {
+                  rDate = String(row[dateIdx]).trim();
+                }
+              } else {
+                rDate = new Date().toISOString().split('T')[0];
+              }
 
-              if (!rBarangName) continue;
+              if (!rBarangName) {
+                skippedEmptyCount++;
+                continue;
+              }
 
               const matchedBarang = barangList.find(b => b.name.toLowerCase() === rBarangName.toLowerCase());
-              if (!matchedBarang) continue;
+              if (!matchedBarang) {
+                skippedNotFoundNames.push(rBarangName);
+                continue;
+              }
 
               const newPriceList = {
                 barangId: matchedBarang.id,
@@ -3390,7 +3436,24 @@
             }
 
             await logActivity('Import Price List', `${importedCount} entri katalog harga diimpor dari file Excel.`);
-            showToast(`${importedCount} katalog harga berhasil diimpor dari Excel.`);
+            
+            if (importedCount === 0) {
+              let errorMsg = '0 data berhasil diimpor. ';
+              if (skippedNotFoundNames.length > 0) {
+                errorMsg += `${skippedNotFoundNames.length} nama barang tidak terdaftar di Master Barang (contoh: "${skippedNotFoundNames[0]}").`;
+              } else if (skippedEmptyCount > 0) {
+                errorMsg += 'Kolom Nama Barang kosong pada baris data.';
+              } else {
+                errorMsg += 'Periksa apakah format nama kolom sudah sesuai (Nama Barang, Harga Beli, Harga Jual, Tanggal Berlaku).';
+              }
+              showToast(errorMsg, 'error');
+            } else {
+              let successMsg = `${importedCount} katalog harga berhasil diimpor dari Excel.`;
+              if (skippedNotFoundNames.length > 0) {
+                successMsg += ` (Dilewati: ${skippedNotFoundNames.length} barang tidak terdaftar)`;
+              }
+              showToast(successMsg, 'success');
+            }
             reloadData();
           } catch (err) {
             console.error(err);
