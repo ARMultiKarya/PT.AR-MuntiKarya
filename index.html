@@ -114,6 +114,40 @@
       background-size: 80px 80px;
       animation: slideBg 30s linear infinite;
     }
+    /* Sticky Columns for Price List Matrix Table */
+    .sticky-col-1 {
+      position: sticky !important;
+      left: 0px !important;
+      z-index: 10 !important;
+    }
+    .sticky-col-2 {
+      position: sticky !important;
+      left: 40px !important;
+      z-index: 10 !important;
+    }
+    .sticky-col-3 {
+      position: sticky !important;
+      left: 260px !important;
+      z-index: 10 !important;
+    }
+    .sticky-col-header-1 {
+      position: sticky !important;
+      left: 0px !important;
+      top: 0px !important;
+      z-index: 20 !important;
+    }
+    .sticky-col-header-2 {
+      position: sticky !important;
+      left: 40px !important;
+      top: 0px !important;
+      z-index: 20 !important;
+    }
+    .sticky-col-header-3 {
+      position: sticky !important;
+      left: 260px !important;
+      top: 0px !important;
+      z-index: 20 !important;
+    }
   </style>
 
   <!-- Custom CSS -->
@@ -3935,16 +3969,16 @@
           {viewMode === 'matrix' ? (
             <div className="bg-white dark:bg-slate-955 rounded-2xl border border-slate-150 dark:border-slate-855 shadow-sm overflow-hidden animate-fade-in">
               <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse text-xs">
+                <table className="w-full text-left border-separate border-spacing-0 text-xs">
                   <thead>
                     <tr className="bg-slate-50 dark:bg-slate-900 border-b border-slate-150 dark:border-slate-850 text-slate-400 font-bold uppercase tracking-wider text-[9px]">
-                      <th rowSpan="2" className="sticky left-0 top-0 z-20 bg-slate-50 dark:bg-slate-900 py-4 px-4 border-r border-slate-150 dark:border-slate-850 min-w-[40px] w-[40px] text-center">No</th>
-                      <th rowSpan="2" className="sticky left-[40px] top-0 z-20 bg-slate-50 dark:bg-slate-900 py-4 px-6 border-r border-slate-150 dark:border-slate-850 min-w-[220px] w-[220px]">Nama Barang</th>
-                      <th rowSpan="2" className="sticky left-[260px] top-0 z-20 bg-slate-50 dark:bg-slate-900 py-4 px-4 border-r-2 border-slate-200 dark:border-slate-800 min-w-[80px] w-[80px] text-center shadow-[4px_0_8px_-2px_rgba(0,0,0,0.08)]">Satuan</th>
+                      <th rowSpan="2" className="sticky-col-header-1 bg-slate-50 dark:bg-slate-900 py-4 px-4 border-r border-b border-slate-150 dark:border-slate-850 min-w-[40px] w-[40px] text-center">No</th>
+                      <th rowSpan="2" className="sticky-col-header-2 bg-slate-50 dark:bg-slate-900 py-4 px-6 border-r border-b border-slate-150 dark:border-slate-850 min-w-[220px] w-[220px]">Nama Barang</th>
+                      <th rowSpan="2" className="sticky-col-header-3 bg-slate-50 dark:bg-slate-900 py-4 px-4 border-r-2 border-b border-slate-200 dark:border-slate-800 min-w-[80px] w-[80px] text-center shadow-[4px_0_8px_-2px_rgba(0,0,0,0.08)]">Satuan</th>
                       {selectedMonths.map(mIdx => {
                         const numWeeks = getWeeksInMonth(selectedYear, mIdx);
                         return (
-                          <th key={mIdx} colSpan={numWeeks} className="py-2.5 px-2 border-r border-slate-150 dark:border-slate-850 text-center font-black bg-slate-100/50 dark:bg-slate-900/40 text-primary-700 dark:text-primary-400">
+                          <th key={mIdx} colSpan={numWeeks} className="py-2.5 px-2 border-r border-b border-slate-150 dark:border-slate-850 text-center font-black bg-slate-100/50 dark:bg-slate-900/40 text-primary-700 dark:text-primary-400">
                             {INDO_MONTHS[mIdx]} {selectedYear}
                           </th>
                         );
@@ -3956,7 +3990,7 @@
                         const weekHeaders = [];
                         for (let w = 1; w <= numWeeks; w++) {
                           weekHeaders.push(
-                            <th key={w} className="py-2 px-1 border-r border-slate-150 dark:border-slate-850 min-w-[70px]">Wk {w}</th>
+                            <th key={w} className="py-2 px-1 border-r border-b border-slate-150 dark:border-slate-850 min-w-[70px]">Wk {w}</th>
                           );
                         }
                         return <React.Fragment key={mIdx}>{weekHeaders}</React.Fragment>;
@@ -3973,16 +4007,16 @@
                     ) : (
                       filteredBarang.map((b, idx) => (
                         <tr key={b.id} className="group hover:bg-slate-50/50 dark:hover:bg-slate-900/10">
-                          <td className="sticky left-0 z-10 bg-white dark:bg-slate-955 group-hover:bg-slate-50 dark:group-hover:bg-slate-900 py-3 px-4 border-r border-slate-150 dark:border-slate-850 text-center text-slate-400 font-bold min-w-[40px] w-[40px]">{idx + 1}</td>
-                          <td className="sticky left-[40px] z-10 bg-white dark:bg-slate-955 group-hover:bg-slate-50 dark:group-hover:bg-slate-900 py-3 px-6 border-r border-slate-150 dark:border-slate-850 font-extrabold text-slate-855 dark:text-white truncate min-w-[220px] w-[220px] max-w-[220px]" title={b.name}>{b.name}</td>
-                          <td className="sticky left-[260px] z-10 bg-white dark:bg-slate-955 group-hover:bg-slate-50 dark:group-hover:bg-slate-900 py-3 px-4 border-r-2 border-slate-200 dark:border-slate-800 text-center text-slate-550 capitalize min-w-[80px] w-[80px] shadow-[4px_0_8px_-2px_rgba(0,0,0,0.08)]">{b.unit || '-'}</td>
+                          <td className="sticky-col-1 bg-white dark:bg-slate-955 group-hover:bg-slate-50 dark:group-hover:bg-slate-900 py-3 px-4 border-r border-b border-slate-150 dark:border-slate-850 text-center text-slate-400 font-bold min-w-[40px] w-[40px]">{idx + 1}</td>
+                          <td className="sticky-col-2 bg-white dark:bg-slate-955 group-hover:bg-slate-50 dark:group-hover:bg-slate-900 py-3 px-6 border-r border-b border-slate-150 dark:border-slate-850 font-extrabold text-slate-855 dark:text-white truncate min-w-[220px] w-[220px] max-w-[220px]" title={b.name}>{b.name}</td>
+                          <td className="sticky-col-3 bg-white dark:bg-slate-955 group-hover:bg-slate-50 dark:group-hover:bg-slate-900 py-3 px-4 border-r-2 border-b border-slate-200 dark:border-slate-800 text-center text-slate-550 capitalize min-w-[80px] w-[80px] shadow-[4px_0_8px_-2px_rgba(0,0,0,0.08)]">{b.unit || '-'}</td>
                           {selectedMonths.map(mIdx => {
                             const numWeeks = getWeeksInMonth(selectedYear, mIdx);
                             const weekCells = [];
                             for (let w = 1; w <= numWeeks; w++) {
                               const price = getPriceForWeek(b.id, selectedYear, mIdx, w, priceType);
                               weekCells.push(
-                                <td key={`${mIdx}-${w}`} className={`py-3 px-2 border-r border-slate-150 dark:border-slate-850 text-right font-mono font-bold ${price > 0 ? (priceType === 'jual' ? 'text-primary-600 dark:text-primary-400' : 'text-amber-600 dark:text-amber-400') : 'text-slate-355 dark:text-slate-700 font-normal'}`}>
+                                <td key={`${mIdx}-${w}`} className={`py-3 px-2 border-r border-b border-slate-150 dark:border-slate-850 text-right font-mono font-bold ${price > 0 ? (priceType === 'jual' ? 'text-primary-600 dark:text-primary-400' : 'text-amber-600 dark:text-amber-400') : 'text-slate-355 dark:text-slate-700 font-normal'}`}>
                                   {price > 0 ? formatRupiah(price) : '-'}
                                 </td>
                               );
@@ -3995,9 +4029,9 @@
                   </tbody>
                   <tfoot>
                     <tr className="bg-slate-100/50 dark:bg-slate-900/60 font-black border-t-2 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200">
-                      <td className="sticky left-0 z-10 bg-slate-100 dark:bg-slate-900 py-3 px-4 border-r border-slate-150 dark:border-slate-850 text-center text-slate-400 min-w-[40px] w-[40px]">-</td>
-                      <td className="sticky left-[40px] z-10 bg-slate-100 dark:bg-slate-900 py-3 px-6 border-r border-slate-150 dark:border-slate-850 uppercase tracking-wider text-[10px] text-left font-black min-w-[220px] w-[220px]">TOTAL</td>
-                      <td className="sticky left-[260px] z-10 bg-slate-100 dark:bg-slate-900 py-3 px-4 border-r-2 border-slate-200 dark:border-slate-800 text-center min-w-[80px] w-[80px] shadow-[4px_0_8px_-2px_rgba(0,0,0,0.08)]">-</td>
+                      <td className="sticky-col-1 bg-slate-100 dark:bg-slate-900 py-3 px-4 border-r border-slate-150 dark:border-slate-850 text-center text-slate-400 min-w-[40px] w-[40px]">-</td>
+                      <td className="sticky-col-2 bg-slate-100 dark:bg-slate-900 py-3 px-6 border-r border-slate-150 dark:border-slate-850 uppercase tracking-wider text-[10px] text-left font-black min-w-[220px] w-[220px]">TOTAL</td>
+                      <td className="sticky-col-3 bg-slate-100 dark:bg-slate-900 py-3 px-4 border-r-2 border-slate-200 dark:border-slate-800 text-center min-w-[80px] w-[80px] shadow-[4px_0_8px_-2px_rgba(0,0,0,0.08)]">-</td>
                       {selectedMonths.map(mIdx => {
                         const numWeeks = getWeeksInMonth(selectedYear, mIdx);
                         const weekCells = [];
