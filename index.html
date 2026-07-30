@@ -1025,10 +1025,10 @@
     ];
 
     const SEED_PRICE_LIST = [
-      { id: 1, barangId: 1, hargaBeli: 60000, hargaJual: 65000, effectiveDate: '2026-07-01' },
-      { id: 2, barangId: 2, hargaBeli: 190000, hargaJual: 210000, effectiveDate: '2026-07-01' },
-      { id: 3, barangId: 3, hargaBeli: 15000, hargaJual: 18000, effectiveDate: '2026-07-01' },
-      { id: 4, barangId: 4, hargaBeli: 43000, hargaJual: 47000, effectiveDate: '2026-07-01' }
+      { id: 1, barangId: 1, hargaBeli: 60000, hargaJual: 65000, effectiveDate: '2026-07-01', effectiveDateEnd: '' },
+      { id: 2, barangId: 2, hargaBeli: 190000, hargaJual: 210000, effectiveDate: '2026-07-01', effectiveDateEnd: '' },
+      { id: 3, barangId: 3, hargaBeli: 15000, hargaJual: 18000, effectiveDate: '2026-07-01', effectiveDateEnd: '' },
+      { id: 4, barangId: 4, hargaBeli: 43000, hargaJual: 47000, effectiveDate: '2026-07-01', effectiveDateEnd: '' }
     ];
 
     const SEED_CUSTOMERS = [
@@ -1840,8 +1840,8 @@
         const allItems = [
           { id: 'dashboard', name: 'Dashboard', icon: 'layout-dashboard', roles: ['admin', 'finance', 'sppg', 'mitra'] },
           { id: 'supplier', name: 'Master Supplier', icon: 'truck', roles: ['admin', 'finance'] },
-          { id: 'bukti_pembelian', name: 'Bukti Pembelian (Supplier)', icon: 'receipt', roles: ['admin', 'finance'] },
           { id: 'barang', name: 'Master Barang', icon: 'package', roles: ['admin', 'finance'] },
+          { id: 'bukti_pembelian', name: 'Bukti Pembelian (Supplier)', icon: 'receipt', roles: ['admin', 'finance'] },
           { id: 'price_list', name: 'Price List', icon: 'tags', roles: ['admin', 'finance', 'sppg', 'mitra'] },
           { id: 'kalkulator_po', name: 'Kalkulator Budget PO', icon: 'calculator', roles: ['admin', 'sppg', 'mitra'] },
           { id: 'customer', name: 'Mitra / Customer', icon: 'users', roles: ['admin', 'finance'] },
@@ -3378,6 +3378,7 @@
       const [hargaBeli, setHargaBeli] = React.useState('');
       const [hargaJual, setHargaJual] = React.useState('');
       const [effectiveDate, setEffectiveDate] = React.useState('');
+      const [effectiveDateEnd, setEffectiveDateEnd] = React.useState('');
 
       // Weekly Matrix Mode States & Helpers
       const INDO_MONTHS = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
@@ -3528,12 +3529,14 @@
           barangId: Number(barangId),
           hargaBeli: Number(hargaBeli),
           hargaJual: Number(hargaJual),
-          effectiveDate
+          effectiveDate,
+          effectiveDateEnd
         };
 
         await saveToStore('price_lists', data);
         const b = barangList.find(x => x.id === Number(barangId));
-        await logActivity('Atur Harga', `Harga untuk ${b ? b.name : 'Barang'} diatur ke Beli: ${formatRupiah(hargaBeli)}, Jual: ${formatRupiah(hargaJual)} mulai ${effectiveDate}.`);
+        const periodStr = effectiveDateEnd ? `${effectiveDate} s/d ${effectiveDateEnd}` : `${effectiveDate} s/d Seterusnya`;
+        await logActivity('Atur Harga', `Harga untuk ${b ? b.name : 'Barang'} diatur ke Beli: ${formatRupiah(hargaBeli)}, Jual: ${formatRupiah(hargaJual)} (Berlaku: ${periodStr}).`);
         showToast('Harga baru berhasil disimpan.');
         
         setModalOpen(false);
@@ -3541,6 +3544,7 @@
         setHargaBeli('');
         setHargaJual('');
         setEffectiveDate('');
+        setEffectiveDateEnd('');
         reloadData();
       };
 
@@ -3579,12 +3583,16 @@
             let beliIdx = headers.indexOf('harga beli');
             let jualIdx = headers.indexOf('harga jual');
             let dateIdx = headers.indexOf('tanggal berlaku');
+            if (dateIdx === -1) dateIdx = headers.indexOf('tanggal mulai berlaku');
+            let dateEndIdx = headers.indexOf('berlaku hingga');
+            if (dateEndIdx === -1) dateEndIdx = headers.indexOf('tanggal berakhir');
 
             // Substring mapping to allow variations in header names
             if (nameIdx === -1) nameIdx = headers.findIndex(h => h.includes('nama') || h.includes('barang') || h.includes('item'));
             if (beliIdx === -1) beliIdx = headers.findIndex(h => h.includes('beli') || h.includes('harga beli') || h.includes('cost'));
             if (jualIdx === -1) jualIdx = headers.findIndex(h => h.includes('jual') || h.includes('harga jual') || h.includes('price'));
-            if (dateIdx === -1) dateIdx = headers.findIndex(h => h.includes('tanggal') || h.includes('date') || h.includes('berlaku'));
+            if (dateIdx === -1) dateIdx = headers.findIndex(h => h.includes('mulai') || h.includes('tanggal') || h.includes('date') || h.includes('berlaku'));
+            if (dateEndIdx === -1) dateEndIdx = headers.findIndex(h => h.includes('hingga') || h.includes('sampai') || h.includes('akhir') || h.includes('end'));
 
             // Fallback to default indices if still not found
             if (nameIdx === -1) nameIdx = 0;
@@ -3604,11 +3612,10 @@
               const rHargaBeli = row[beliIdx] ? Number(row[beliIdx]) : 0;
               const rHargaJual = row[jualIdx] ? Number(row[jualIdx]) : 0;
               
-              // Handle Excel date format or string date format
+              // Handle Excel date format or string date format for Start Date
               let rDate = '';
               if (row[dateIdx]) {
                 if (typeof row[dateIdx] === 'number' && row[dateIdx] > 40000) {
-                  // Handle Excel serial date
                   const dateObj = new Date((row[dateIdx] - 25569) * 86400 * 1000);
                   rDate = dateObj.toISOString().split('T')[0];
                 } else {
@@ -3616,6 +3623,17 @@
                 }
               } else {
                 rDate = new Date().toISOString().split('T')[0];
+              }
+
+              // Handle End Date if present
+              let rDateEnd = '';
+              if (dateEndIdx !== -1 && row[dateEndIdx]) {
+                if (typeof row[dateEndIdx] === 'number' && row[dateEndIdx] > 40000) {
+                  const dateObj = new Date((row[dateEndIdx] - 25569) * 86400 * 1000);
+                  rDateEnd = dateObj.toISOString().split('T')[0];
+                } else {
+                  rDateEnd = String(row[dateEndIdx]).trim();
+                }
               }
 
               if (!rBarangName) {
@@ -3633,7 +3651,8 @@
                 barangId: matchedBarang.id,
                 hargaBeli: rHargaBeli,
                 hargaJual: rHargaJual,
-                effectiveDate: rDate
+                effectiveDate: rDate,
+                effectiveDateEnd: rDateEnd
               };
 
               // Check if already exists for same date and item
@@ -3655,7 +3674,7 @@
               } else if (skippedEmptyCount > 0) {
                 errorMsg += 'Kolom Nama Barang kosong pada baris data.';
               } else {
-                errorMsg += 'Periksa apakah format nama kolom sudah sesuai (Nama Barang, Harga Beli, Harga Jual, Tanggal Berlaku).';
+                errorMsg += 'Periksa apakah format nama kolom sudah sesuai (Nama Barang, Harga Beli, Harga Jual, Tanggal Mulai Berlaku, Berlaku Hingga).';
               }
               showToast(errorMsg, 'error');
             } else {
@@ -3678,7 +3697,7 @@
       // Export Excel using SheetJS
       const handleExportExcel = () => {
         const rows = [
-          ['Nama Barang', 'Harga Beli', 'Harga Jual', 'Tanggal Berlaku']
+          ['Nama Barang', 'Harga Beli', 'Harga Jual', 'Tanggal Mulai Berlaku', 'Berlaku Hingga']
         ];
         priceLists.forEach(p => {
           const b = barangList.find(x => x.id === p.barangId);
@@ -3686,7 +3705,8 @@
             b ? b.name : 'Unknown',
             p.hargaBeli,
             p.hargaJual,
-            p.effectiveDate
+            p.effectiveDate,
+            p.effectiveDateEnd || 'Seterusnya'
           ]);
         });
 
@@ -4057,7 +4077,13 @@
                           <td className="py-4 px-6 font-extrabold text-slate-855 dark:text-white">{b ? b.name : 'Unknown'}</td>
                           {!isReadOnly && <td className="py-4 px-6 text-right font-extrabold text-red-500">{formatRupiah(p.hargaBeli || 0)}</td>}
                           <td className="py-4 px-6 text-right font-extrabold text-primary-600 dark:text-primary-400">{formatRupiah(p.hargaJual || 0)}</td>
-                          <td className="py-4 px-6 text-center font-semibold text-slate-555">{p.effectiveDate}</td>
+                          <td className="py-4 px-6 text-center font-semibold text-slate-555">
+                            {p.effectiveDate ? (
+                              <span>
+                                {p.effectiveDate} <span className="text-slate-400 font-normal">s/d</span> {p.effectiveDateEnd || 'Seterusnya'}
+                              </span>
+                            ) : '-'}
+                          </td>
                           {!isReadOnly && (
                             <td className="py-4 px-6 text-right">
                               <button 
@@ -4105,9 +4131,15 @@
                       <input type="number" required min="0" value={hargaJual} onChange={(e) => setHargaJual(e.target.value)} className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-3 py-2 rounded-xl focus:border-primary-500 focus:outline-none dark:text-white" />
                     </div>
                   </div>
-                  <div>
-                    <label className="block text-[10px] text-slate-400 uppercase tracking-wide mb-1">Tanggal Mulai Berlaku *</label>
-                    <input type="date" required value={effectiveDate} onChange={(e) => setEffectiveDate(e.target.value)} className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-3 py-2 rounded-xl focus:outline-none dark:text-white" />
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-[10px] text-slate-400 uppercase tracking-wide mb-1">Tanggal Mulai Berlaku *</label>
+                      <input type="date" required value={effectiveDate} onChange={(e) => setEffectiveDate(e.target.value)} className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-3 py-2 rounded-xl focus:outline-none dark:text-white" />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] text-slate-400 uppercase tracking-wide mb-1">Berlaku Hingga Tanggal (Opsional)</label>
+                      <input type="date" value={effectiveDateEnd} onChange={(e) => setEffectiveDateEnd(e.target.value)} className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-3 py-2 rounded-xl focus:outline-none dark:text-white" placeholder="KOSONG = Seterusnya" />
+                    </div>
                   </div>
 
                   <div className="flex justify-end gap-3 pt-4 border-t border-slate-100 dark:border-slate-855">
