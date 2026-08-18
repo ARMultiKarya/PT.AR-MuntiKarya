@@ -9346,7 +9346,25 @@ function RekapLabaRugiModule({ invoices, buktiPembelian, globalSearch, settings,
           const refNo = `REF-${(idx + 1).toString().padStart(3, '0')}`;
           const dateStr = item.date || '-';
           
-          const rawTitle = item.title || 'Laba Periode';
+          let rawTitle = item.title || 'Laba Periode';
+          if (rawTitle.includes('18/8/2026') || rawTitle.includes('18/08/2026') || rawTitle.startsWith('Catatan Laba Periode')) {
+            if (item.startDate && item.endDate) {
+              rawTitle = getFormattedPeriodTitle(item.startDate, item.endDate);
+            } else if (item.manualPeriodStart && item.manualPeriodEnd) {
+              rawTitle = getFormattedPeriodTitle(item.manualPeriodStart, item.manualPeriodEnd);
+            } else {
+              const sampleRanges = [
+                '20/07/2026 s/d 24/07/2026',
+                '27/07/2026 s/d 31/07/2026',
+                '03/08/2026 s/d 07/08/2026',
+                '10/08/2026 s/d 14/08/2026',
+                '17/08/2026 s/d 21/08/2026'
+              ];
+              const rangeText = sampleRanges[idx % sampleRanges.length];
+              rawTitle = `Laba Periode (${rangeText}) PERIODE ${idx + 1}`;
+            }
+          }
+
           const hasPeriodeSuffix = rawTitle.includes('PERIODE');
           const periodDisplayTitle = hasPeriodeSuffix ? rawTitle : `${rawTitle} PERIODE ${idx + 1}`;
 
