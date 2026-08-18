@@ -1,24 +1,48 @@
 <!DOCTYPE html>
 <html lang="id" class="h-full bg-slate-50 dark:bg-slate-900">
+
 <head>
   <script>
-    (function() {
-      var logs = [];
-      function isNetworkError(str) {
-        if (!str) return false;
-        var s = String(str).toLowerCase();
-        return s.includes('failed to fetch') || 
-               s.includes('networkerror') || 
-               s.includes('load failed') || 
-               s.includes('fetch failed') ||
-               s.includes('network error') ||
-               s.includes('typeerror');
+    (function () {
+      // SafeDOM Protection against Lucide icon replacement and Chrome Auto-Translate DOM mutations
+      if (typeof Node === 'function' && Node.prototype) {
+        const originalRemoveChild = Node.prototype.removeChild;
+        Node.prototype.removeChild = function (child) {
+          if (child && child.parentNode !== this) {
+            if (console && console.warn) console.warn('SafeDOM: Suppressed removeChild on unattached node:', child);
+            return child;
+          }
+          return originalRemoveChild.apply(this, arguments);
+        };
+
+        const originalInsertBefore = Node.prototype.insertBefore;
+        Node.prototype.insertBefore = function (newNode, referenceNode) {
+          if (referenceNode && referenceNode.parentNode !== this) {
+            if (console && console.warn) console.warn('SafeDOM: Suppressed insertBefore on unattached reference:', referenceNode);
+            return newNode;
+          }
+          return originalInsertBefore.apply(this, arguments);
+        };
       }
 
-      window.addEventListener('error', function(e) {
+      var logs = [];
+      function isIgnoredError(str) {
+        if (!str) return false;
+        var s = String(str).toLowerCase();
+        return s.includes('failed to fetch') ||
+          s.includes('networkerror') ||
+          s.includes('load failed') ||
+          s.includes('fetch failed') ||
+          s.includes('network error') ||
+          s.includes('notfounderror') ||
+          s.includes('removechild') ||
+          s.includes('typeerror');
+      }
+
+      window.addEventListener('error', function (e) {
         var msgStr = (e && e.message) ? String(e.message) : (e && e.error ? String(e.error) : '');
-        if (isNetworkError(msgStr)) {
-          console.warn('Network error event suppressed from debug overlay:', msgStr);
+        if (isIgnoredError(msgStr)) {
+          console.warn('Non-critical error event suppressed from debug overlay:', msgStr);
           return;
         }
         var msg = '[' + new Date().toLocaleTimeString() + '] ' + (e.message || 'Error') + ' at ' + e.filename + ':' + e.lineno + ':' + e.colno;
@@ -29,7 +53,7 @@
         showConsole();
       });
 
-      window.addEventListener('unhandledrejection', function(e) {
+      window.addEventListener('unhandledrejection', function (e) {
         var reason = e ? e.reason : null;
         var reasonMsg = '';
         if (reason) {
@@ -37,8 +61,8 @@
           else if (reason.message) reasonMsg = String(reason.message);
           else reasonMsg = String(reason);
         }
-        if (isNetworkError(reasonMsg) || isNetworkError(reason)) {
-          console.warn('Unhandled network rejection suppressed from debug overlay:', reasonMsg);
+        if (isIgnoredError(reasonMsg) || isIgnoredError(reason)) {
+          console.warn('Unhandled non-critical rejection suppressed from debug overlay:', reasonMsg);
           if (e.preventDefault) e.preventDefault();
           return;
         }
@@ -50,8 +74,8 @@
         showConsole();
       });
       function showConsole() {
-        var filteredLogs = logs.filter(function(log) {
-          return !isNetworkError(log);
+        var filteredLogs = logs.filter(function (log) {
+          return !isIgnoredError(log);
         });
         if (filteredLogs.length === 0) {
           var errorDiv = document.getElementById('debug-error-console');
@@ -91,15 +115,16 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>PT AR MULTI KARYA - Sistem Internal Terintegrasi</title>
-  
+
   <!-- Google Fonts Outfit -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-  
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap"
+    rel="stylesheet">
+
   <!-- Tailwind CSS Play CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
-  
+
   <!-- Tailwind Config -->
   <script>
     tailwind.config = {
@@ -143,43 +168,55 @@
 
   <style>
     @keyframes slideBg {
-      0% { background-position: 0 0; }
-      100% { background-position: 120px 120px; }
+      0% {
+        background-position: 0 0;
+      }
+
+      100% {
+        background-position: 120px 120px;
+      }
     }
+
     .animate-sliding-pattern {
       background-image: repeating-linear-gradient(45deg, rgba(14, 165, 233, 0.03) 0px, rgba(14, 165, 233, 0.03) 2px, transparent 2px, transparent 20px),
-                        repeating-linear-gradient(-45deg, rgba(239, 68, 68, 0.02) 0px, rgba(239, 68, 68, 0.02) 2px, transparent 2px, transparent 20px);
+        repeating-linear-gradient(-45deg, rgba(239, 68, 68, 0.02) 0px, rgba(239, 68, 68, 0.02) 2px, transparent 2px, transparent 20px);
       background-size: 80px 80px;
       animation: slideBg 30s linear infinite;
     }
+
     /* Sticky Columns for Price List Matrix Table */
     .sticky-col-1 {
       position: sticky !important;
       left: 0px !important;
       z-index: 10 !important;
     }
+
     .sticky-col-2 {
       position: sticky !important;
       left: 40px !important;
       z-index: 10 !important;
     }
+
     .sticky-col-3 {
       position: sticky !important;
       left: 260px !important;
       z-index: 10 !important;
     }
+
     .sticky-col-header-1 {
       position: sticky !important;
       left: 0px !important;
       top: 0px !important;
       z-index: 20 !important;
     }
+
     .sticky-col-header-2 {
       position: sticky !important;
       left: 40px !important;
       top: 0px !important;
       z-index: 20 !important;
     }
+
     .sticky-col-header-3 {
       position: sticky !important;
       left: 260px !important;
@@ -196,7 +233,7 @@
   <script>window.React || document.write('<script src="js/react.production.min.js"><\/script>')</script>
   <script src="https://cdn.jsdelivr.net/npm/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
   <script>window.ReactDOM || document.write('<script src="js/react-dom.production.min.js"><\/script>')</script>
-  
+
   <!-- Babel Standalone (CDN with Local Fallback) -->
   <script src="https://cdn.jsdelivr.net/npm/@babel/standalone@7/babel.min.js" crossorigin></script>
   <script>window.Babel || document.write('<script src="js/babel.min.js"><\/script>')</script>
@@ -218,71 +255,72 @@
 
   <!-- Custom Babel Runner to Catch & Show Compile Errors -->
   <script>
-    (function() {
-      var babelRetries = 0;
-      function runBabelCompilation() {
-        if (typeof Babel === 'undefined') {
-          babelRetries++;
-          if (babelRetries === 10) {
-            console.warn('Emergency loading Babel from CDN...');
-            var s = document.createElement('script');
-            s.src = 'https://cdn.jsdelivr.net/npm/@babel/standalone@7/babel.min.js';
-            s.onload = runBabelCompilation;
-            document.head.appendChild(s);
-            return;
-          }
-          if (babelRetries > 60) {
-            console.error('Babel failed to load after retries.');
-            return;
-          }
-          setTimeout(runBabelCompilation, 100);
-          return;
-        }
-        var scripts = document.querySelectorAll('script[type="text/custom-babel"]');
-        scripts.forEach(function(script) {
-          try {
-            var code = script.textContent;
-            var compiled = Babel.transform(code, { 
-              presets: [['react', { runtime: 'classic' }]]
-            }).code;
-            var newScript = document.createElement('script');
-            newScript.textContent = compiled;
-            document.body.appendChild(newScript);
-          } catch (err) {
-            console.error('Babel Compilation Failed:', err);
-            var errorDiv = document.getElementById('debug-error-console');
-            if (!errorDiv) {
-              errorDiv = document.createElement('div');
-              errorDiv.id = 'debug-error-console';
-              errorDiv.style.position = 'fixed';
-              errorDiv.style.bottom = '0';
-              errorDiv.style.left = '0';
-              errorDiv.style.right = '0';
-              errorDiv.style.background = '#fee2e2';
-              errorDiv.style.color = '#991b1b';
-              errorDiv.style.padding = '20px';
-              errorDiv.style.fontFamily = 'monospace';
-              errorDiv.style.fontSize = '12px';
-              errorDiv.style.zIndex = '999999';
-              errorDiv.style.borderTop = '3px solid #ef4444';
-              errorDiv.style.maxHeight = '250px';
-              errorDiv.style.overflowY = 'auto';
-              errorDiv.style.whiteSpace = 'pre-wrap';
-              document.body.appendChild(errorDiv);
+      (function () {
+        var babelRetries = 0;
+        function runBabelCompilation() {
+          if (typeof Babel === 'undefined') {
+            babelRetries++;
+            if (babelRetries === 10) {
+              console.warn('Emergency loading Babel from CDN...');
+              var s = document.createElement('script');
+              s.src = 'https://cdn.jsdelivr.net/npm/@babel/standalone@7/babel.min.js';
+              s.onload = runBabelCompilation;
+              document.head.appendChild(s);
+              return;
             }
-            errorDiv.textContent = '=== BABEL COMPILATION ERROR ===\n' + err.message + '\n\n' + (err.stack || '') + '\n\n' + errorDiv.textContent;
+            if (babelRetries > 60) {
+              console.error('Babel failed to load after retries.');
+              return;
+            }
+            setTimeout(runBabelCompilation, 100);
+            return;
           }
-        });
-      }
+          var scripts = document.querySelectorAll('script[type="text/custom-babel"]');
+          scripts.forEach(function (script) {
+            try {
+              var code = script.textContent;
+              var compiled = Babel.transform(code, {
+                presets: [['react', { runtime: 'classic' }]]
+              }).code;
+              var newScript = document.createElement('script');
+              newScript.textContent = compiled;
+              document.body.appendChild(newScript);
+            } catch (err) {
+              console.error('Babel Compilation Failed:', err);
+              var errorDiv = document.getElementById('debug-error-console');
+              if (!errorDiv) {
+                errorDiv = document.createElement('div');
+                errorDiv.id = 'debug-error-console';
+                errorDiv.style.position = 'fixed';
+                errorDiv.style.bottom = '0';
+                errorDiv.style.left = '0';
+                errorDiv.style.right = '0';
+                errorDiv.style.background = '#fee2e2';
+                errorDiv.style.color = '#991b1b';
+                errorDiv.style.padding = '20px';
+                errorDiv.style.fontFamily = 'monospace';
+                errorDiv.style.fontSize = '12px';
+                errorDiv.style.zIndex = '999999';
+                errorDiv.style.borderTop = '3px solid #ef4444';
+                errorDiv.style.maxHeight = '250px';
+                errorDiv.style.overflowY = 'auto';
+                errorDiv.style.whiteSpace = 'pre-wrap';
+                document.body.appendChild(errorDiv);
+              }
+              errorDiv.textContent = '=== BABEL COMPILATION ERROR ===\n' + err.message + '\n\n' + (err.stack || '') + '\n\n' + errorDiv.textContent;
+            }
+          });
+        }
 
-      if (document.readyState === 'loading') {
-        window.addEventListener('DOMContentLoaded', runBabelCompilation);
-      } else {
-        runBabelCompilation();
-      }
-    })();
+        if (document.readyState === 'loading') {
+          window.addEventListener('DOMContentLoaded', runBabelCompilation);
+        } else {
+          runBabelCompilation();
+        }
+      })();
   </script>
 </head>
+
 <body class="h-full text-slate-800 dark:text-slate-100 font-sans antialiased overflow-x-hidden">
 
   <!-- React Root -->
@@ -8670,6 +8708,8 @@ function RekapLabaRugiModule({ invoices, buktiPembelian, globalSearch, settings,
           if (ov.hpp !== undefined) monthsMap[key].hpp = Number(ov.hpp);
           if (ov.pembelian !== undefined) monthsMap[key].pembelian = Number(ov.pembelian);
           if (ov.tax !== undefined) monthsMap[key].tax = Number(ov.tax);
+          if (ov.labaBersih !== undefined) monthsMap[key].customLabaBersih = Number(ov.labaBersih);
+          if (ov.periodDetails !== undefined) monthsMap[key].periodDetails = ov.periodDetails;
         });
 
         const sortedKeys = Object.keys(monthsMap)
@@ -8683,14 +8723,15 @@ function RekapLabaRugiModule({ invoices, buktiPembelian, globalSearch, settings,
           const monthLabel = `${monthNames[monthIdx] || monthStr} ${yearStr}`;
           const labaKotor = item.revenue - item.hpp;
           const taxVal = item.tax || (labaKotor > 0 ? labaKotor * 0.02 : 0);
-          const labaBersih = labaKotor - taxVal;
+          const labaBersih = item.customLabaBersih !== undefined ? item.customLabaBersih : (labaKotor - taxVal);
 
           return {
             ...item,
             monthLabel,
             labaKotor,
             tax: taxVal,
-            labaBersih
+            labaBersih,
+            periodDetails: item.periodDetails || []
           };
         });
       }, [invoices, buktiPembelian, monthlyOverrides, monthlyHiddenKeys]);
@@ -8732,20 +8773,682 @@ function RekapLabaRugiModule({ invoices, buktiPembelian, globalSearch, settings,
       const [penerimaManfaat, setPenerimaManfaat] = React.useState(0);
 
       // Manual Calculation States
+      const [manualPeriodStart, setManualPeriodStart] = React.useState('');
+      const [manualPeriodEnd, setManualPeriodEnd] = React.useState('');
       const [manualBaseProfit, setManualBaseProfit] = React.useState(() => Number(localStorage.getItem('pt_ar_manual_base_profit') || 0));
       const [manualBaseProfitInput, setManualBaseProfitInput] = React.useState(() => {
         const val = Number(localStorage.getItem('pt_ar_manual_base_profit') || 0);
         return val === 0 ? '' : new Intl.NumberFormat('id-ID').format(val);
       });
       const [allocations, setAllocations] = React.useState(() => JSON.parse(localStorage.getItem('pt_ar_manual_allocations') || '[]'));
+
+      const handleCalculatePeriodProfit = () => {
+        if (!manualPeriodStart && !manualPeriodEnd) {
+          alert("Silakan pilih Tanggal Mulai dan Tanggal Selesai terlebih dahulu!");
+          return;
+        }
+
+        // Filter invoices in range
+        const periodInvoices = (invoices || []).filter(inv => {
+          if (!inv || !inv.invoiceDate) return false;
+          if (manualPeriodStart && inv.invoiceDate < manualPeriodStart) return false;
+          if (manualPeriodEnd && inv.invoiceDate > manualPeriodEnd) return false;
+          return true;
+        });
+
+        const rev = periodInvoices.reduce((s, inv) => s + ((Number(inv.subtotal) || 0) - (Number(inv.discount) || 0)), 0);
+        const hppVal = periodInvoices.reduce((s, inv) => s + (Number(inv.hpp) || 0), 0);
+        const taxVal = periodInvoices.reduce((s, inv) => s + (Number(inv.taxAmount) || 0), 0);
+        const labaKotor = rev - hppVal;
+        const calcTax = taxVal || (labaKotor > 0 ? labaKotor * 0.02 : 0);
+        const calcLabaBersih = Math.max(0, labaKotor - calcTax);
+
+        setManualBaseProfit(calcLabaBersih);
+        setManualBaseProfitInput(calcLabaBersih === 0 ? '' : new Intl.NumberFormat('id-ID').format(calcLabaBersih));
+
+        const formatDateIndo = (dStr) => {
+          if (!dStr) return '';
+          const [y, m, d] = dStr.split('-');
+          return `${d}/${m}/${y}`;
+        };
+
+        const periodLabel = `Laba Periode (${formatDateIndo(manualPeriodStart)} s/d ${formatDateIndo(manualPeriodEnd)})`;
+        setManualRecordTitle(periodLabel);
+
+        if (showToast) showToast(`Laba bersih periode ${formatDateIndo(manualPeriodStart)} s/d ${formatDateIndo(manualPeriodEnd)} sebesar ${formatRupiah(calcLabaBersih)} berhasil kalkulasi!`);
+      };
       const [newAllocName, setNewAllocName] = React.useState('');
       const [newAllocType, setNewAllocType] = React.useState('rp'); // 'rp' or 'percent'
       const [newAllocValue, setNewAllocValue] = React.useState('');
+      const handleLoadMitraTemplate = () => {
+        const defaultMitraAllocs = [
+          { id: 'm_tax', name: 'Potongan Pajak PT (2%)', type: 'percent', value: 2 },
+          { id: 'm_gaji', name: 'Gaji Finance Mingguan', type: 'rp', value: 1250000 },
+          { id: 'm_1', name: 'Mitra 1 (10%)', type: 'percent', value: 10 },
+          { id: 'm_2', name: 'Mitra 2 (10%)', type: 'percent', value: 10 },
+          { id: 'm_3', name: 'Mitra 3 (10%)', type: 'percent', value: 10 },
+          { id: 'm_4', name: 'Mitra 4 (10%)', type: 'percent', value: 10 },
+          { id: 'm_5', name: 'Mitra 5 (10%)', type: 'percent', value: 10 },
+          { id: 'm_6', name: 'Mitra 6 (10%)', type: 'percent', value: 10 },
+          { id: 'm_7', name: 'Penerima Ke-7 (5%)', type: 'percent', value: 5 },
+          { id: 'm_share', name: 'Share Profit 100', type: 'rp', value: 1509000 }
+        ];
+        setAllocations(defaultMitraAllocs);
+        if (showToast) showToast("Template Kemitraan (Pajak 2%, Gaji Finance, Mitra 1-6 10%, Penerima 7 5%, Share Profit) berhasil dimuat!");
+      };
+
+      // Helper to compute allocation amounts according to user's order:
+      // Base Profit -> Deduct Pajak PT (2%) & Gaji Finance -> Calculate Mitra 1-6 (10%) & Penerima 7 (5%) from remaining base!
+      const computeAllocationsWithOrder = (baseRev, allocsList = []) => {
+        let netBaseForMitra = Number(baseRev || 0);
+
+        // 1. Calculate Priority Deductions (Pajak PT & Gaji Finance) first
+        allocsList.forEach(a => {
+          const valNum = Number(a.value !== undefined ? a.value : (a.val !== undefined ? a.val : 0));
+          const nameLower = (a.name || '').toLowerCase();
+          if (nameLower.includes('pajak') || nameLower.includes('gaji finance')) {
+            const priorityComp = a.type === 'percent' ? (Number(baseRev || 0) * (valNum / 100)) : valNum;
+            netBaseForMitra -= priorityComp;
+          }
+        });
+
+        if (netBaseForMitra < 0) netBaseForMitra = 0;
+
+        // 2. Compute final computed value for each allocation
+        return allocsList.map(a => {
+          const valNum = Number(a.value !== undefined ? a.value : (a.val !== undefined ? a.val : 0));
+          const nameLower = (a.name || '').toLowerCase();
+          let comp = 0;
+
+          if (a.type === 'percent') {
+            if (nameLower.includes('pajak')) {
+              comp = Number(baseRev || 0) * (valNum / 100);
+            } else {
+              // Partner percentages (Mitra 1-6 10%, Penerima 7 5%) calculate from netBaseForMitra (after Pajak & Gaji Finance)!
+              comp = netBaseForMitra * (valNum / 100);
+            }
+          } else {
+            comp = valNum;
+          }
+
+          return {
+            ...a,
+            value: valNum,
+            val: valNum,
+            computed: Math.round(comp)
+          };
+        });
+      };
 
       // Saved History & Editing for Manual Calculator
       const [manualHistory, setManualHistory] = React.useState(() => JSON.parse(localStorage.getItem('pt_ar_manual_saved_history') || '[]'));
       const [manualRecordTitle, setManualRecordTitle] = React.useState('');
       const [editingHistoryId, setEditingHistoryId] = React.useState(null);
+
+      const handleSaveManualHistory = () => {
+        if (manualBaseProfit <= 0) {
+          alert("Masukkan Profit Acuan Utama yang valid terlebih dahulu!");
+          return;
+        }
+        const now = new Date();
+        const timeStr = now.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+        const defaultTitle = (manualPeriodStart && manualPeriodEnd) 
+          ? `Laba Periode (${manualPeriodStart.split('-').reverse().join('/')} s/d ${manualPeriodEnd.split('-').reverse().join('/')})`
+          : `Catatan Laba Periode (${now.toLocaleDateString('id-ID')})`;
+
+        const titleToUse = manualRecordTitle.trim() || defaultTitle;
+        const computedAllocs = computeAllocationsWithOrder(manualBaseProfit, allocations);
+        const totalDeduct = computedAllocs.reduce((sum, a) => sum + a.computed, 0);
+        const remNet = Math.max(0, manualBaseProfit - totalDeduct);
+
+        let updated = [];
+        if (editingHistoryId) {
+          updated = manualHistory.map(item => item.id === editingHistoryId ? {
+            ...item,
+            title: titleToUse,
+            savedAt: timeStr + ' (Diperbarui)',
+            manualBaseProfit,
+            allocations: computedAllocs,
+            deductions: totalDeduct,
+            totalAllocated: totalDeduct,
+            remaining: remNet
+          } : item);
+          if (showToast) showToast(`Catatan "${titleToUse}" berhasil diperbarui!`);
+          setEditingHistoryId(null);
+        } else {
+          const newRecord = {
+            id: 'mhist_' + Date.now(),
+            title: titleToUse,
+            savedAt: timeStr,
+            manualBaseProfit,
+            allocations: computedAllocs,
+            deductions: totalDeduct,
+            totalAllocated: totalDeduct,
+            remaining: remNet
+          };
+          updated = [newRecord, ...manualHistory];
+          if (showToast) showToast(`Catatan "${titleToUse}" berhasil disimpan ke Riwayat Manual!`);
+        }
+
+        setManualHistory(updated);
+        localStorage.setItem('pt_ar_manual_saved_history', JSON.stringify(updated));
+        setManualRecordTitle('');
+      };
+
+      // Weekly Mitra Rekap History & Accumulation
+      const [weeklyRekapHistory, setWeeklyRekapHistory] = React.useState(() => JSON.parse(localStorage.getItem('pt_ar_weekly_rekap_history') || '[]'));
+
+      const handleSaveWeeklyRekap = (currentStats) => {
+        const periodStr = startDate && endDate 
+          ? `${startDate.split('-').reverse().join('/')} s/d ${endDate.split('-').reverse().join('/')}`
+          : 'Semua Waktu';
+        
+        const now = new Date();
+        const timeStr = now.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+
+        const newRecord = {
+          id: 'wk_' + Date.now(),
+          periodLabel: `Rekap Periode (${periodStr})`,
+          savedAt: timeStr,
+          startDate,
+          endDate,
+          penjualan: currentStats.totalDailyPenjualan,
+          pembelian: currentStats.totalDailyPembelian,
+          labaKotor: currentStats.labaKotorMitra,
+          tax: currentStats.pajakPTMitra,
+          gajiFinance: Number(gajiFinance || 0),
+          porsiPenerima: Number(penerimaManfaat || 0),
+          potonganPenerima: currentStats.potonganPenerima,
+          labaBersih: currentStats.labaBersihMitra,
+          perMitra: currentStats.perMitra,
+          perOrangKe7: currentStats.perOrangKe7,
+          sisaPT: currentStats.sisaPT
+        };
+
+        const updated = [newRecord, ...weeklyRekapHistory];
+        setWeeklyRekapHistory(updated);
+        localStorage.setItem('pt_ar_weekly_rekap_history', JSON.stringify(updated));
+        if (showToast) showToast(`Rekap mingguan "${newRecord.periodLabel}" berhasil disimpan ke daftar akumulasi!`);
+      };
+
+      // Modal State for Syncing to Riwayat Laba Rugi Per Bulan with Accumulation
+      const [syncModal, setSyncModal] = React.useState({
+        isOpen: false,
+        periodTitle: '',
+        revenue: 0,
+        hpp: 0,
+        pembelian: 0,
+        tax: 0,
+        labaBersih: 0,
+        allocations: [],
+        selectedMonthKey: `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`,
+        isAccumulate: true
+      });
+
+      // Modal State for Viewing Detailed Breakdown of a Month
+      const [detailMonthModal, setDetailMonthModal] = React.useState({
+        isOpen: false,
+        monthKey: '',
+        monthLabel: '',
+        data: null
+      });
+
+      // Auto-sanitize and auto-sync monthlyOverrides from manualHistory to prevent double accumulation
+      React.useEffect(() => {
+        if (!manualHistory || manualHistory.length === 0) return;
+
+        const now = new Date();
+        const key = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+        const currentOv = monthlyOverrides[key];
+
+        const mappedDetails = manualHistory.map(hItem => {
+          const itemRev = Number(hItem.manualBaseProfit || 0);
+          const itemTitle = hItem.title || 'Catatan Periode Laba Rugi';
+          const itemAllocs = computeAllocationsWithOrder(itemRev, hItem.allocations || []);
+          const totalDeductions = itemAllocs.reduce((sum, a) => sum + (Number(a.computed) || 0), 0);
+          const itemNet = Math.max(0, itemRev - totalDeductions);
+
+          return {
+            title: itemTitle,
+            revenue: itemRev,
+            labaBersih: itemNet,
+            allocations: itemAllocs,
+            date: hItem.savedAt || now.toLocaleDateString('id-ID')
+          };
+        });
+
+        const totalRev = mappedDetails.reduce((sum, item) => sum + item.revenue, 0);
+        const totalNet = mappedDetails.reduce((sum, item) => sum + item.labaBersih, 0);
+
+        // Check if currentOv needs auto-sanitization (if revenue is doubled/wrong, or periodDetails has duplicates)
+        const isMismatched = !currentOv || currentOv.revenue !== totalRev || currentOv.labaBersih !== totalNet ||
+          !Array.isArray(currentOv.periodDetails) || currentOv.periodDetails.length !== mappedDetails.length ||
+          currentOv.periodDetails.some(d => !d.title || d.title.startsWith('Catatan Laba Periode ('));
+
+        if (isMismatched) {
+          const existing = currentOv || { hpp: 0, pembelian: 0, tax: 0 };
+          const updatedOverrides = {
+            ...monthlyOverrides,
+            [key]: {
+              ...existing,
+              revenue: totalRev,
+              labaBersih: totalNet,
+              periodDetails: mappedDetails
+            }
+          };
+
+          setMonthlyOverrides(updatedOverrides);
+          localStorage.setItem('pt_ar_monthly_overrides', JSON.stringify(updatedOverrides));
+        }
+      }, [manualHistory]);
+
+      const openSyncModal = (revenueVal, hppVal = 0, pembelianVal = 0, taxVal = 0, labaBersihVal = null, titleVal = '', allocationsVal = []) => {
+        const now = new Date();
+        const defaultKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+        const computedLabaBersih = (labaBersihVal !== null && labaBersihVal !== undefined)
+          ? Number(labaBersihVal)
+          : (Number(revenueVal || 0) - Number(hppVal || 0) - Number(taxVal || 0));
+
+        setSyncModal({
+          isOpen: true,
+          periodTitle: titleVal || `Catatan Laba Periode (${now.toLocaleDateString('id-ID')})`,
+          revenue: Number(revenueVal || 0),
+          hpp: Number(hppVal || 0),
+          pembelian: Number(pembelianVal || 0),
+          tax: Number(taxVal || 0),
+          labaBersih: computedLabaBersih,
+          allocations: allocationsVal || [],
+          selectedMonthKey: defaultKey,
+          isAccumulate: true
+        });
+      };
+
+      const handleConfirmSyncToMonthlyHistory = () => {
+        const now = new Date();
+        const key = syncModal.selectedMonthKey || `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+        
+        // 1. Unhide key if previously hidden
+        const updatedHidden = monthlyHiddenKeys.filter(k => k !== key);
+        if (updatedHidden.length !== monthlyHiddenKeys.length) {
+          setMonthlyHiddenKeys(updatedHidden);
+          localStorage.setItem('pt_ar_monthly_hidden_keys', JSON.stringify(updatedHidden));
+        }
+
+        // 2. Accumulate or replace existing values
+        const existing = monthlyOverrides[key] || { revenue: 0, hpp: 0, pembelian: 0, tax: 0, periodDetails: [] };
+        
+        const itemRev = Number(syncModal.revenue || 0);
+        const itemTitle = syncModal.periodTitle || 'Catatan Periode Laba Rugi';
+        const itemAllocs = computeAllocationsWithOrder(itemRev, syncModal.allocations || []);
+        const totalDeductions = itemAllocs.reduce((sum, a) => sum + (Number(a.computed) || 0), 0);
+        const itemNet = Math.max(0, itemRev - totalDeductions);
+
+        const finalRev = syncModal.isAccumulate ? (Number(existing.revenue || 0) + itemRev) : itemRev;
+        const finalHpp = syncModal.isAccumulate ? (Number(existing.hpp || 0) + Number(syncModal.hpp || 0)) : Number(syncModal.hpp || 0);
+        const finalPem = syncModal.isAccumulate ? (Number(existing.pembelian || 0) + Number(syncModal.pembelian || 0)) : Number(syncModal.pembelian || 0);
+        const finalTax = syncModal.isAccumulate ? (Number(existing.tax || 0) + Number(syncModal.tax || 0)) : Number(syncModal.tax || 0);
+
+        const existingNet = existing.labaBersih !== undefined 
+          ? Number(existing.labaBersih) 
+          : (Number(existing.revenue || 0) - Number(existing.hpp || 0) - Number(existing.tax || 0));
+
+        const finalLabaBersih = syncModal.isAccumulate ? (existingNet + itemNet) : itemNet;
+
+        const newDetailItem = {
+          title: itemTitle,
+          revenue: itemRev,
+          labaBersih: itemNet,
+          allocations: itemAllocs,
+          date: now.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+        };
+
+        const existingDetails = Array.isArray(existing.periodDetails) ? existing.periodDetails : [];
+        const updatedDetails = syncModal.isAccumulate ? [...existingDetails, newDetailItem] : [newDetailItem];
+
+        const updatedOverrides = {
+          ...monthlyOverrides,
+          [key]: {
+            revenue: finalRev,
+            hpp: finalHpp,
+            pembelian: finalPem,
+            tax: finalTax,
+            labaBersih: finalLabaBersih,
+            periodDetails: updatedDetails
+          }
+        };
+
+        setMonthlyOverrides(updatedOverrides);
+        localStorage.setItem('pt_ar_monthly_overrides', JSON.stringify(updatedOverrides));
+        setSyncModal(prev => ({ ...prev, isOpen: false }));
+
+        if (showToast) showToast(`Data "${newDetailItem.title}" berhasil digabung ke bulan ${key}! Total Laba Bersih kini: ${formatRupiah(finalLabaBersih)}`);
+      };
+
+      const handleDeletePeriodDetail = (monthKey, detailIdx) => {
+        const existing = monthlyOverrides[monthKey];
+        if (!existing || !Array.isArray(existing.periodDetails)) return;
+
+        const targetItem = existing.periodDetails[detailIdx];
+        if (!confirm(`Apakah Anda yakin ingin menghapus Rincian Periode "${targetItem.title}" dari akumulasi bulan ini?`)) return;
+
+        const updatedDetails = existing.periodDetails.filter((_, idx) => idx !== detailIdx);
+        const itemRev = Number(targetItem?.revenue || 0);
+        const itemNet = Number(targetItem?.labaBersih || 0);
+
+        const newRev = Math.max(0, Number(existing.revenue || 0) - itemRev);
+        const newNet = Number(existing.labaBersih || 0) - itemNet;
+
+        const updatedOverrides = {
+          ...monthlyOverrides,
+          [monthKey]: {
+            ...existing,
+            revenue: newRev,
+            labaBersih: newNet,
+            periodDetails: updatedDetails
+          }
+        };
+
+        setMonthlyOverrides(updatedOverrides);
+        localStorage.setItem('pt_ar_monthly_overrides', JSON.stringify(updatedOverrides));
+
+        setDetailMonthModal(prev => ({
+          ...prev,
+          data: updatedOverrides[monthKey]
+        }));
+
+        if (showToast) showToast(`Rincian "${targetItem.title}" telah dihapus dari bulan ${monthKey}.`);
+      };
+
+      const handleDirectSyncManualHistoryToMonth = (hItem) => {
+        const now = new Date();
+        const key = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+        
+        // 1. Unhide key if hidden
+        const updatedHidden = monthlyHiddenKeys.filter(k => k !== key);
+        if (updatedHidden.length !== monthlyHiddenKeys.length) {
+          setMonthlyHiddenKeys(updatedHidden);
+          localStorage.setItem('pt_ar_monthly_hidden_keys', JSON.stringify(updatedHidden));
+        }
+
+        // 2. Existing values
+        const existing = monthlyOverrides[key] || { revenue: 0, hpp: 0, pembelian: 0, tax: 0, periodDetails: [] };
+        const itemRev = Number(hItem.manualBaseProfit || 0);
+        const itemTitle = hItem.title || 'Catatan Periode Laba Rugi';
+        const itemAllocs = computeAllocationsWithOrder(itemRev, hItem.allocations || []);
+        const totalDeductions = itemAllocs.reduce((sum, a) => sum + (Number(a.computed) || 0), 0);
+        const itemNet = Math.max(0, itemRev - totalDeductions);
+
+        const finalRev = Number(existing.revenue || 0) + itemRev;
+        const existingNet = existing.labaBersih !== undefined 
+          ? Number(existing.labaBersih) 
+          : (Number(existing.revenue || 0) - Number(existing.hpp || 0) - Number(existing.tax || 0));
+        const finalLabaBersih = existingNet + itemNet;
+
+        const newDetailItem = {
+          title: itemTitle,
+          revenue: itemRev,
+          labaBersih: itemNet,
+          allocations: itemAllocs,
+          date: now.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+        };
+
+        const existingDetails = Array.isArray(existing.periodDetails) ? existing.periodDetails : [];
+        const updatedDetails = [...existingDetails, newDetailItem];
+
+        const updatedOverrides = {
+          ...monthlyOverrides,
+          [key]: {
+            ...existing,
+            revenue: finalRev,
+            labaBersih: finalLabaBersih,
+            periodDetails: updatedDetails
+          }
+        };
+
+        setMonthlyOverrides(updatedOverrides);
+        localStorage.setItem('pt_ar_monthly_overrides', JSON.stringify(updatedOverrides));
+
+        if (showToast) showToast(`Data "${itemTitle}" (Laba: ${formatRupiah(itemNet)}) berhasil langsung digabungkan ke riwayat bulan ini!`);
+      };
+
+      const handleAutoSyncAllManualHistoryToMonth = (targetMonthKey) => {
+        if (!manualHistory || manualHistory.length === 0) {
+          if (showToast) showToast("Belum ada data di Riwayat Kalkulasi Manual Ter-Simpan.");
+          return;
+        }
+
+        const now = new Date();
+        const key = targetMonthKey || `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+
+        const mappedDetails = manualHistory.map(hItem => {
+          const itemRev = Number(hItem.manualBaseProfit || 0);
+          const itemTitle = hItem.title || 'Catatan Periode Laba Rugi';
+          const itemAllocs = computeAllocationsWithOrder(itemRev, hItem.allocations || []);
+          const totalDeductions = itemAllocs.reduce((sum, a) => sum + (Number(a.computed) || 0), 0);
+          const itemNet = Math.max(0, itemRev - totalDeductions);
+
+          return {
+            title: itemTitle,
+            revenue: itemRev,
+            labaBersih: itemNet,
+            allocations: itemAllocs,
+            date: hItem.savedAt || now.toLocaleDateString('id-ID')
+          };
+        });
+
+        const totalRev = mappedDetails.reduce((sum, item) => sum + item.revenue, 0);
+        const totalNet = mappedDetails.reduce((sum, item) => sum + item.labaBersih, 0);
+
+        const existing = monthlyOverrides[key] || { hpp: 0, pembelian: 0, tax: 0 };
+        const updatedOverrides = {
+          ...monthlyOverrides,
+          [key]: {
+            ...existing,
+            revenue: totalRev,
+            labaBersih: totalNet,
+            periodDetails: mappedDetails
+          }
+        };
+
+        const updatedHidden = monthlyHiddenKeys.filter(k => k !== key);
+        if (updatedHidden.length !== monthlyHiddenKeys.length) {
+          setMonthlyHiddenKeys(updatedHidden);
+          localStorage.setItem('pt_ar_monthly_hidden_keys', JSON.stringify(updatedHidden));
+        }
+
+        setMonthlyOverrides(updatedOverrides);
+        localStorage.setItem('pt_ar_monthly_overrides', JSON.stringify(updatedOverrides));
+
+        if (showToast) showToast(`Berhasil menyinkronkan ${mappedDetails.length} catatan riwayat manual ke bulan ini (Total Laba: ${formatRupiah(totalNet)})!`);
+      };
+
+      const handlePrintLaporanBulanan = (monthLabel, data) => {
+        if (!data) return;
+        const printWin = window.open('', '_blank', 'width=1000,height=750');
+        if (!printWin) {
+          alert("Pop-up diblokir oleh browser. Harap izinkan pop-up untuk mencetak Laporan Bulanan.");
+          return;
+        }
+
+        const details = Array.isArray(data.periodDetails) ? data.periodDetails : [];
+        const totalRev = Number(data.revenue || 0);
+        const totalNet = Number(data.labaBersih || 0);
+        const totalDeductions = totalRev - totalNet;
+
+        let runningSaldo = 0;
+        let rowsHtml = '';
+
+        details.forEach((item, idx) => {
+          const itemRev = Number(item.revenue || 0);
+          const itemNet = Number(item.labaBersih || 0);
+          const refNo = `REF-${(idx + 1).toString().padStart(3, '0')}`;
+          const dateStr = item.date || '-';
+
+          // 1. Header Row for Period Note (Debit)
+          runningSaldo += itemRev;
+          rowsHtml += `
+            <tr style="background:#e0f2fe; font-weight:bold; border-top:2px solid #0284c7;">
+              <td style="text-align:center; font-family:monospace; font-size:10px; color:#0369a1;">${dateStr}</td>
+              <td style="text-align:center; font-family:monospace; font-size:10px; color:#0369a1;">${refNo}</td>
+              <td style="color:#0369a1; font-weight:800; font-size:11px;">
+                ${item.title} <span style="font-size:9px; font-weight:normal; color:#0284c7;">(Profit Acuan Utama)</span>
+              </td>
+              <td style="text-align:right; font-weight:800; color:#0369a1;">+${formatRupiah(itemRev)}</td>
+              <td style="text-align:center; color:#cbd5e1;">-</td>
+              <td style="text-align:right; font-weight:800; color:#0369a1;">${formatRupiah(runningSaldo)}</td>
+            </tr>
+          `;
+
+          // 2. Individual Allocation Rows (Kredit)
+          if (Array.isArray(item.allocations) && item.allocations.length > 0) {
+            item.allocations.forEach((al) => {
+              const valNum = Number(al.value !== undefined ? al.value : (al.val !== undefined ? al.val : 0));
+              const comp = (al.computed && Number(al.computed) > 0)
+                ? Number(al.computed)
+                : (al.type === 'percent' ? (itemRev * (valNum / 100)) : valNum);
+              
+              runningSaldo -= comp;
+
+              const hasPercentInName = al.name && al.name.includes('%');
+              const nameLabel = (al.type === 'percent' && !hasPercentInName) ? `${al.name} (${valNum}%)` : al.name;
+
+              rowsHtml += `
+                <tr style="background:#ffffff;">
+                  <td style="text-align:center; font-family:monospace; font-size:9.5px; color:#64748b;">${dateStr}</td>
+                  <td style="text-align:center; font-family:monospace; font-size:9.5px; color:#64748b;">${refNo}</td>
+                  <td style="padding-left:22px; color:#334155; font-size:10px;">
+                    <span style="color:#94a3b8; font-family:monospace;">├─</span> ${nameLabel}
+                    <span style="font-size:8.5px; color:#64748b; margin-left:4px;">(${al.type === 'percent' ? 'Persentase' : 'Nominal Flat'})</span>
+                  </td>
+                  <td style="text-align:center; color:#cbd5e1;">-</td>
+                  <td style="text-align:right; font-weight:bold; color:#dc2626;">-${formatRupiah(comp)}</td>
+                  <td style="text-align:right; font-weight:bold; color:#1e293b;">${formatRupiah(runningSaldo)}</td>
+                </tr>
+              `;
+            });
+          }
+
+          // 3. Subtotal Row for this Period Note
+          rowsHtml += `
+            <tr style="background:#f8fafc; font-weight:bold; border-bottom:2px solid #cbd5e1; font-size:10px;">
+              <td colspan="2" style="text-align:center; color:#64748b; font-size:9px;">SUBTOTAL ${refNo}</td>
+              <td style="color:#475569;">Sisa Laba Bersih (${item.title})</td>
+              <td style="text-align:right; color:#0369a1;">+${formatRupiah(itemRev)}</td>
+              <td style="text-align:right; color:#dc2626;">-${formatRupiah(itemRev - itemNet)}</td>
+              <td style="text-align:right; color:#15803d; font-weight:800; background:#f0fdf4;">${formatRupiah(itemNet)}</td>
+            </tr>
+          `;
+        });
+
+        const fullHtml = `
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <title>LAPORAN BULANAN LABA PERIODE - ${monthLabel}</title>
+            <style>
+              body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; font-size: 11px; color: #1e293b; padding: 25px; line-height: 1.4; }
+              .header-bank { display: flex; justify-content: space-between; align-items: center; border-bottom: 3px double #0f172a; padding-bottom: 12px; margin-bottom: 15px; }
+              .company-title { font-size: 18px; font-weight: 800; color: #0f172a; letter-spacing: 0.5px; text-transform: uppercase; }
+              .doc-title { font-size: 12px; font-weight: 700; color: #475569; text-transform: uppercase; margin-top: 2px; }
+              .meta-box { background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 6px; padding: 10px 14px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 15px; font-size: 10px; }
+              .meta-item label { display: block; color: #64748b; font-weight: bold; text-transform: uppercase; font-size: 8.5px; }
+              .meta-item span { font-size: 12px; font-weight: bold; color: #0f172a; }
+              table { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 10.5px; }
+              th { background: #0f172a; color: #ffffff; font-size: 9.5px; text-transform: uppercase; text-align: left; padding: 7px 9px; border: 1px solid #0f172a; font-weight: 700; letter-spacing: 0.3px; }
+              td { padding: 7px 9px; border: 1px solid #cbd5e1; vertical-align: top; }
+              .tot-row { background: #f1f5f9; font-weight: bold; font-size: 11px; }
+              .footer-sign { display: flex; justify-content: space-between; margin-top: 40px; page-break-inside: avoid; }
+              .sign-box { text-align: center; width: 180px; }
+              .sign-title { font-size: 10px; font-weight: bold; color: #475569; }
+              .sign-space { height: 50px; }
+              .sign-name { font-size: 10.5px; font-weight: bold; border-top: 1px solid #94a3b8; padding-top: 3px; }
+              @media print {
+                body { padding: 0; }
+                @page { size: A4 landscape; margin: 12mm 10mm; }
+              }
+            </style>
+          </head>
+          <body>
+            <div class="header-bank" style="background:#e0f2fe; padding:15px; border-radius:8px; border:1px solid #0284c7; text-align:center; display:block; margin-bottom:15px;">
+              <div style="font-size:18px; font-weight:900; color:#0369a1; text-transform:uppercase; letter-spacing:1px;">PT AR MULTI KARYA BOROBUDUR</div>
+              <div style="font-size:14px; font-weight:800; color:#0f172a; text-transform:uppercase; margin-top:2px;">ENTRI JURNAL UMUM (BUKU BESAR AKUMULASI TRANSAKSI)</div>
+              <div style="font-size:12px; font-weight:700; color:#0284c7; text-transform:uppercase; margin-top:3px;">PERIODE BULAN: ${monthLabel.toUpperCase()}</div>
+            </div>
+
+            <div class="meta-box">
+              <div class="meta-item">
+                <label>Bulan Akumulasi</label>
+                <span>${monthLabel}</span>
+              </div>
+              <div class="meta-item">
+                <label>Total Debit (Profit Acuan)</label>
+                <span style="color:#0369a1;">+${formatRupiah(totalRev)}</span>
+              </div>
+              <div class="meta-item">
+                <label>Total Kredit (Alokasi Potongan)</label>
+                <span style="color:#dc2626;">-${formatRupiah(totalDeductions)}</span>
+              </div>
+              <div class="meta-item">
+                <label>Saldo Laba Bersih Akhir</label>
+                <span style="color:#15803d; font-size:13px;">${formatRupiah(totalNet)}</span>
+              </div>
+            </div>
+
+            <table>
+              <thead>
+                <tr>
+                  <th style="width:110px; text-align:center;">Waktu / Tanggal</th>
+                  <th style="width:80px; text-align:center;">No. Ref</th>
+                  <th>Keterangan / Uraian Catatan Periode & Potongan</th>
+                  <th style="width:120px; text-align:right;">Debit (Profit Acuan)</th>
+                  <th style="width:120px; text-align:right;">Kredit (Potongan Alokasi)</th>
+                  <th style="width:130px; text-align:right;">Saldo Laba Bersih</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${rowsHtml || '<tr><td colspan="6" style="text-align:center; color:#94a3b8; font-style:italic; padding:15px;">Belum ada rincian catatan periode khusus. Data bersumber dari transaksi sistem.</td></tr>'}
+              </tbody>
+              <tfoot>
+                <tr class="tot-row">
+                  <td colspan="3" style="text-align:right;">TOTAL LAPORAN BULAN ${monthLabel.toUpperCase()}</td>
+                  <td style="text-align:right; color:#0369a1;">+${formatRupiah(totalRev)}</td>
+                  <td style="text-align:right; color:#dc2626;">-${formatRupiah(totalDeductions)}</td>
+                  <td style="text-align:right; color:#15803d; font-size:12px;">${formatRupiah(totalNet)}</td>
+                </tr>
+              </tfoot>
+            </table>
+
+            <div class="footer-sign">
+              <div class="sign-box">
+                <div class="sign-title">Dibuat Oleh (Finance)</div>
+                <div class="sign-space"></div>
+                <div class="sign-name">( .................................... )</div>
+              </div>
+              <div class="sign-box">
+                <div class="sign-title">Diperiksa Oleh (Manager)</div>
+                <div class="sign-space"></div>
+                <div class="sign-name">( .................................... )</div>
+              </div>
+              <div class="sign-box">
+                <div class="sign-title">Disetujui Oleh (Direktur)</div>
+                <div class="sign-space"></div>
+                <div class="sign-name">( PT AR MULTI KARYA )</div>
+              </div>
+            </div>
+
+            <script>
+              window.onload = function() {
+                window.print();
+              };
+            <\/script>
+          </body>
+          </html>
+        `;
+
+        printWin.document.open();
+        printWin.document.write(fullHtml);
+        printWin.document.close();
+      };
 
       // Password Auth Modal State
       const [authModal, setAuthModal] = React.useState({
@@ -8835,6 +9538,27 @@ function RekapLabaRugiModule({ invoices, buktiPembelian, globalSearch, settings,
           localStorage.setItem('pt_ar_monthly_hidden_keys', JSON.stringify(updatedHidden));
           if (showToast) showToast(`Riwayat bulan ${targetData.monthLabel} berhasil dihapus dari daftar.`);
         }
+        else if (actionType === 'delete_weekly_rekap') {
+          const updated = weeklyRekapHistory.filter(w => w.id !== targetData.id);
+          setWeeklyRekapHistory(updated);
+          localStorage.setItem('pt_ar_weekly_rekap_history', JSON.stringify(updated));
+          if (showToast) showToast(`Rekap mingguan "${targetData.periodLabel}" berhasil dihapus.`);
+        }
+        else if (actionType === 'clear_all_manual_history') {
+          setManualHistory([]);
+          localStorage.removeItem('pt_ar_manual_saved_history');
+          if (showToast) showToast('Seluruh Riwayat Kalkulasi Manual berhasil dihapus.');
+        }
+        else if (actionType === 'clear_all_weekly_rekap') {
+          setWeeklyRekapHistory([]);
+          localStorage.removeItem('pt_ar_weekly_rekap_history');
+          if (showToast) showToast('Seluruh Akumulasi Rekap Mingguan Kemitraan berhasil dihapus.');
+        }
+        else if (actionType === 'clear_all_monthly_overrides') {
+          setMonthlyOverrides({});
+          localStorage.removeItem('pt_ar_monthly_overrides');
+          if (showToast) showToast('Seluruh Kustomisasi Riwayat Laba Rugi Per Bulan berhasil di-reset.');
+        }
         else if (actionType === 'edit_month') {
           setEditMonthModal({
             isOpen: true,
@@ -8843,83 +9567,31 @@ function RekapLabaRugiModule({ invoices, buktiPembelian, globalSearch, settings,
             revenue: targetData.revenue,
             hpp: targetData.hpp,
             pembelian: targetData.pembelian,
-            tax: targetData.tax
+            tax: targetData.tax,
+            labaBersih: targetData.labaBersih
           });
         }
       };
 
       const handleSaveMonthEdit = (e) => {
         if (e) e.preventDefault();
-        const { monthKey, monthLabel, revenue, hpp, pembelian, tax } = editMonthModal;
+        const { monthKey, monthLabel, revenue, hpp, pembelian, tax, labaBersih } = editMonthModal;
         const updatedOverrides = {
           ...monthlyOverrides,
           [monthKey]: {
             revenue: Number(revenue || 0),
             hpp: Number(hpp || 0),
             pembelian: Number(pembelian || 0),
-            tax: Number(tax || 0)
+            tax: Number(tax || 0),
+            labaBersih: Number(labaBersih || 0)
           }
         };
         setMonthlyOverrides(updatedOverrides);
         localStorage.setItem('pt_ar_monthly_overrides', JSON.stringify(updatedOverrides));
-        setEditMonthModal({ isOpen: false, monthKey: '', monthLabel: '', revenue: 0, hpp: 0, pembelian: 0, tax: 0 });
+        setEditMonthModal({ isOpen: false, monthKey: '', monthLabel: '', revenue: 0, hpp: 0, pembelian: 0, tax: 0, labaBersih: 0 });
         if (showToast) showToast(`Data riwayat bulan ${monthLabel} berhasil diperbarui.`);
       };
 
-      const handleSaveManualHistory = (e) => {
-        if (e) e.preventDefault();
-        if (manualBaseProfit === 0 && allocations.length === 0) {
-          alert("Silakan masukkan Profit Acuan atau tambah alokasi terlebih dahulu!");
-          return;
-        }
-        const now = new Date();
-        const dateStr = now.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
-        const timeStr = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
-        const defaultTitle = `Kalkulasi Laba ${dateStr}`;
-        const title = manualRecordTitle.trim() || defaultTitle;
-
-        const totalAllocated = allocations.reduce((sum, a) => sum + (a.type === 'percent' ? (manualBaseProfit * (a.value / 100)) : a.value), 0);
-        const remaining = manualBaseProfit - totalAllocated;
-
-        if (editingHistoryId) {
-          // Update existing item
-          const updatedHistory = manualHistory.map(h => {
-            if (h.id === editingHistoryId) {
-              return {
-                ...h,
-                title,
-                manualBaseProfit,
-                allocations: JSON.parse(JSON.stringify(allocations)),
-                totalAllocated,
-                remaining,
-                savedAt: `${dateStr} pukul ${timeStr} (Diperbarui)`
-              };
-            }
-            return h;
-          });
-          setManualHistory(updatedHistory);
-          localStorage.setItem('pt_ar_manual_saved_history', JSON.stringify(updatedHistory));
-          setEditingHistoryId(null);
-          setManualRecordTitle('');
-          if (showToast) showToast(`Catatan riwayat "${title}" berhasil diperbarui!`);
-        } else {
-          // Create new entry
-          const newEntry = {
-            id: Date.now(),
-            title,
-            savedAt: `${dateStr} pukul ${timeStr}`,
-            manualBaseProfit,
-            allocations: JSON.parse(JSON.stringify(allocations)),
-            totalAllocated,
-            remaining
-          };
-          const updated = [newEntry, ...manualHistory];
-          setManualHistory(updated);
-          localStorage.setItem('pt_ar_manual_saved_history', JSON.stringify(updated));
-          setManualRecordTitle('');
-          if (showToast) showToast(`Kalkulasi "${title}" berhasil disimpan ke riwayat!`);
-        }
-      };
 
       const handleLoadManualHistory = (entry) => {
         setManualBaseProfit(entry.manualBaseProfit);
@@ -8970,21 +9642,6 @@ function RekapLabaRugiModule({ invoices, buktiPembelian, globalSearch, settings,
         if (showToast) showToast("Pembagian manual berhasil dihapus.");
       };
 
-      const handleLoadMitraTemplate = () => {
-        const template = [
-          { id: 1, name: 'Potongan Pajak PT (2%)', type: 'percent', value: 2 },
-          { id: 2, name: 'Gaji Finance Mingguan', type: 'rp', value: 1250000 },
-          { id: 3, name: 'Mitra 1 (10%)', type: 'percent', value: 10 },
-          { id: 4, name: 'Mitra 2 (10%)', type: 'percent', value: 10 },
-          { id: 5, name: 'Mitra 3 (10%)', type: 'percent', value: 10 },
-          { id: 6, name: 'Mitra 4 (10%)', type: 'percent', value: 10 },
-          { id: 7, name: 'Mitra 5 (10%)', type: 'percent', value: 10 },
-          { id: 8, name: 'Mitra 6 (10%)', type: 'percent', value: 10 },
-          { id: 9, name: 'Penerima Ke-7 (5%)', type: 'percent', value: 5 }
-        ];
-        setAllocations(template);
-        if (showToast) showToast("Template kemitraan berhasil dimuat. Sisa laba otomatis menjadi Sisa Kas PT.");
-      };
 
       // Helper function to set filter to current week (Monday - Saturday)
       const setThisWeekFilter = () => {
@@ -9182,6 +9839,71 @@ function RekapLabaRugiModule({ invoices, buktiPembelian, globalSearch, settings,
         ws['!cols'] = [{ wch: 45 }, { wch: 25 }, { wch: 25 }, { wch: 25 }];
         XLSX.utils.book_append_sheet(wb, ws, 'Laba Rugi Mitra');
         XLSX.writeFile(wb, `Laba_Rugi_Mitra_PT_AR_${new Date().getFullYear()}.xlsx`);
+      };
+
+      const handleExportWeeklyAccumulationExcel = () => {
+        if (weeklyRekapHistory.length === 0) {
+          alert("Belum ada rekap mingguan yang disimpan!");
+          return;
+        }
+
+        const tot = weeklyRekapHistory.reduce((acc, w) => {
+          acc.penjualan += (w.penjualan || 0);
+          acc.pembelian += (w.pembelian || 0);
+          acc.labaKotor += (w.labaKotor || 0);
+          acc.tax += (w.tax || 0);
+          acc.gajiFinance += (w.gajiFinance || 0);
+          acc.porsiPenerima += (w.porsiPenerima || 0);
+          acc.potonganPenerima += (w.potonganPenerima || 0);
+          acc.labaBersih += (w.labaBersih || 0);
+          acc.perMitra += (w.perMitra || 0);
+          acc.perOrangKe7 += (w.perOrangKe7 || 0);
+          acc.sisaPT += (w.sisaPT || 0);
+          return acc;
+        }, { penjualan: 0, pembelian: 0, labaKotor: 0, tax: 0, gajiFinance: 0, porsiPenerima: 0, potonganPenerima: 0, labaBersih: 0, perMitra: 0, perOrangKe7: 0, sisaPT: 0 });
+
+        const rows = [
+          ['LAPORAN AKUMULASI BAGI HASIL KEMITRAAN BULANAN (REKAP PERIODE MINGGUAN)'],
+          [settings.name],
+          [`Tanggal Ekspor: ${new Date().toLocaleDateString('id-ID')}`],
+          [],
+          ['Nama Periode', 'Penjualan', 'Pembelian', 'Laba Kotor', 'Pajak PT 2%', 'Gaji Finance', 'Porsi Penerima', 'Potongan Penerima (Rp)', 'Laba Bersih Siap Bagi', 'Mitra 1-6 (10% x 6)', 'Penerima Ke-7 (5%)', 'Sisa Kas PT'],
+          ...weeklyRekapHistory.map(w => [
+            w.periodLabel,
+            w.penjualan,
+            w.pembelian,
+            w.labaKotor,
+            w.tax,
+            w.gajiFinance,
+            w.porsiPenerima,
+            w.potonganPenerima,
+            w.labaBersih,
+            w.perMitra * 6,
+            w.perOrangKe7,
+            w.sisaPT
+          ]),
+          [],
+          [
+            'TOTAL AKUMULASI BULANAN',
+            tot.penjualan,
+            tot.pembelian,
+            tot.labaKotor,
+            tot.tax,
+            tot.gajiFinance,
+            tot.porsiPenerima,
+            tot.potonganPenerima,
+            tot.labaBersih,
+            tot.perMitra * 6,
+            tot.perOrangKe7,
+            tot.sisaPT
+          ]
+        ];
+
+        const wb = XLSX.utils.book_new();
+        const ws = XLSX.utils.aoa_to_sheet(rows);
+        ws['!cols'] = Array(12).fill({ wch: 22 });
+        XLSX.utils.book_append_sheet(wb, ws, 'Akumulasi Bulanan');
+        XLSX.writeFile(wb, `Akumulasi_Bagi_Hasil_Kemitraan_${new Date().getFullYear()}.xlsx`);
       };
 
       return (
@@ -9488,16 +10210,224 @@ function RekapLabaRugiModule({ invoices, buktiPembelian, globalSearch, settings,
                         <span className="font-extrabold text-primary-600 dark:text-primary-400">{formatRupiah(sisaPT)}</span>
                       </div>
                     </div>
+
+                    <button
+                      type="button"
+                      onClick={() => handleSaveWeeklyRekap({ totalDailyPenjualan, totalDailyPembelian, labaKotorMitra, pajakPTMitra, potonganPenerima, labaBersihMitra, perMitra, perOrangKe7, sisaPT })}
+                      className="w-full bg-primary-600 hover:bg-primary-700 text-white font-bold py-2.5 rounded-xl text-xs shadow-md active:scale-95 transition-all flex items-center justify-center gap-2 mt-4 no-print"
+                      title="Simpan rekap mingguan saat ini ke tabel akumulasi bulanan di bawah"
+                    >
+                      <i data-lucide="bookmark-plus" className="w-4 h-4"></i> Simpan Rekap Mingguan Ini Ke Akumulasi Bulanan
+                    </button>
                   </div>
                 </div>
+              </div>
+
+              {/* Card Akumulasi Rekap Mingguan Kemitraan */}
+              <div className="bg-white dark:bg-slate-955 p-6 rounded-2xl border border-slate-150 dark:border-slate-850 shadow-sm space-y-4 mt-8">
+                <div className="flex justify-between items-center flex-wrap gap-4 border-b pb-3 border-slate-100 dark:border-slate-900">
+                  <div>
+                    <h4 className="font-bold text-xs uppercase tracking-wider text-slate-700 dark:text-slate-200 flex items-center gap-2">
+                      <i data-lucide="layers" className="w-4 h-4 text-primary-500"></i> Akumulasi Bagi Hasil Kemitraan (Gabungan Periode Mingguan)
+                    </h4>
+                    <span className="text-[10px] text-slate-400 font-medium block mt-0.5">
+                      Gabungan rekapitulasi 4 minggu operasional untuk perhitungan pembagian laba akhir bulan
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] bg-primary-50 dark:bg-primary-950/30 text-primary-600 dark:text-primary-400 font-bold px-3 py-1 rounded-full border border-primary-100 dark:border-primary-900">
+                      {weeklyRekapHistory.length} Rekap Mingguan
+                    </span>
+                    {weeklyRekapHistory.length > 0 && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={handleExportWeeklyAccumulationExcel}
+                          className="bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-xl font-bold text-[10px] flex items-center gap-1.5 active:scale-95 transition-all shadow-sm"
+                          title="Ekspor Laporan Akumulasi Bulanan ke Excel"
+                        >
+                          <i data-lucide="file-spreadsheet" className="w-3.5 h-3.5"></i> Ekspor Excel Akumulasi
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => requestPasswordAuth('clear_all_weekly_rekap', null)}
+                          className="bg-red-50 hover:bg-red-100 text-red-700 dark:bg-red-950/30 dark:text-red-400 border border-red-200 dark:border-red-900 px-3 py-1.5 rounded-xl font-bold text-[10px] flex items-center gap-1.5 active:scale-95 transition-all shadow-sm"
+                          title="Hapus seluruh riwayat rekap mingguan tersimpan (Memerlukan Password)"
+                        >
+                          <i data-lucide="trash-2" className="w-3.5 h-3.5"></i> Hapus Semua
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                {weeklyRekapHistory.length === 0 ? (
+                  <div className="text-center py-8 text-slate-400 text-xs italic">
+                    Belum ada rekap periode mingguan yang disimpan. Silakan klik tombol "Simpan Rekap Mingguan Ini Ke Akumulasi Bulanan" di atas untuk tiap periode minggu.
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-xs border-collapse">
+                      <thead>
+                        <tr className="bg-slate-50 dark:bg-slate-900 text-slate-500 uppercase tracking-wider text-[10px] border-b border-slate-150 dark:border-slate-850">
+                          <th className="py-3 px-4">Nama Periode</th>
+                          <th className="py-3 px-4 text-right">Penjualan</th>
+                          <th className="py-3 px-4 text-right">Pembelian</th>
+                          <th className="py-3 px-4 text-right">Laba Kotor</th>
+                          <th className="py-3 px-4 text-right">Pajak 2%</th>
+                          <th className="py-3 px-4 text-right">Gaji Finance</th>
+                          <th className="py-3 px-4 text-right">Penerima Manfaat</th>
+                          <th className="py-3 px-4 text-right">Laba Bersih</th>
+                          <th className="py-3 px-4 text-right">Mitra (10% x 6)</th>
+                          <th className="py-3 px-4 text-right">Ke-7 (5%)</th>
+                          <th className="py-3 px-4 text-right">Sisa Kas PT</th>
+                          <th className="py-3 px-4 text-center no-print">Aksi</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 dark:divide-slate-900">
+                        {weeklyRekapHistory.map((w) => (
+                          <tr key={w.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-900/50 transition-colors">
+                            <td className="py-3 px-4 font-bold text-slate-800 dark:text-white">
+                              {w.periodLabel}
+                              <span className="block text-[9px] text-slate-400 font-normal">Disimpan: {w.savedAt}</span>
+                            </td>
+                            <td className="py-3 px-4 text-right font-semibold text-primary-600 dark:text-primary-400">{formatRupiah(w.penjualan)}</td>
+                            <td className="py-3 px-4 text-right text-red-500">{formatRupiah(w.pembelian)}</td>
+                            <td className="py-3 px-4 text-right font-semibold">{formatRupiah(w.labaKotor)}</td>
+                            <td className="py-3 px-4 text-right text-amber-500">-{formatRupiah(w.tax)}</td>
+                            <td className="py-3 px-4 text-right text-amber-500">-{formatRupiah(w.gajiFinance)}</td>
+                            <td className="py-3 px-4 text-right text-amber-600 font-semibold">
+                              -{formatRupiah(w.potonganPenerima)}
+                              <span className="block text-[9px] text-slate-400 font-normal">({w.porsiPenerima} porsi)</span>
+                            </td>
+                            <td className="py-3 px-4 text-right font-bold text-green-600">{formatRupiah(w.labaBersih)}</td>
+                            <td className="py-3 px-4 text-right font-semibold">{formatRupiah(w.perMitra * 6)}</td>
+                            <td className="py-3 px-4 text-right font-semibold">{formatRupiah(w.perOrangKe7)}</td>
+                            <td className="py-3 px-4 text-right font-extrabold text-primary-600">{formatRupiah(w.sisaPT)}</td>
+                            <td className="py-3 px-4 text-center no-print">
+                              <button
+                                onClick={() => requestPasswordAuth('delete_weekly_rekap', w)}
+                                className="px-2.5 py-1 bg-red-50 hover:bg-red-100 text-red-700 dark:bg-red-950/30 dark:text-red-400 border border-red-200 dark:border-red-900 rounded-lg text-[10px] font-bold flex items-center gap-1 active:scale-95 transition-all"
+                                title="Hapus Rekap Periode Ini (Memerlukan Password)"
+                              >
+                                <i data-lucide="trash-2" className="w-3 h-3"></i> Hapus
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                      <tfoot>
+                        {(() => {
+                          const tot = weeklyRekapHistory.reduce((acc, w) => {
+                            acc.penjualan += (w.penjualan || 0);
+                            acc.pembelian += (w.pembelian || 0);
+                            acc.labaKotor += (w.labaKotor || 0);
+                            acc.tax += (w.tax || 0);
+                            acc.gajiFinance += (w.gajiFinance || 0);
+                            acc.porsiPenerima += (w.porsiPenerima || 0);
+                            acc.potonganPenerima += (w.potonganPenerima || 0);
+                            acc.labaBersih += (w.labaBersih || 0);
+                            acc.perMitra += (w.perMitra || 0);
+                            acc.perOrangKe7 += (w.perOrangKe7 || 0);
+                            acc.sisaPT += (w.sisaPT || 0);
+                            return acc;
+                          }, { penjualan: 0, pembelian: 0, labaKotor: 0, tax: 0, gajiFinance: 0, porsiPenerima: 0, potonganPenerima: 0, labaBersih: 0, perMitra: 0, perOrangKe7: 0, sisaPT: 0 });
+                          
+                          return (
+                            <tr className="bg-primary-50/70 dark:bg-primary-950/80 font-extrabold text-slate-800 dark:text-white text-xs border-t-2 border-primary-200 dark:border-primary-800">
+                              <td className="py-3.5 px-4 uppercase text-primary-700 dark:text-primary-300">TOTAL AKUMULASI BULANAN</td>
+                              <td className="py-3.5 px-4 text-right text-primary-600 dark:text-primary-400">{formatRupiah(tot.penjualan)}</td>
+                              <td className="py-3.5 px-4 text-right text-red-500">{formatRupiah(tot.pembelian)}</td>
+                              <td className="py-3.5 px-4 text-right">{formatRupiah(tot.labaKotor)}</td>
+                              <td className="py-3.5 px-4 text-right text-amber-600">-{formatRupiah(tot.tax)}</td>
+                              <td className="py-3.5 px-4 text-right text-amber-600">-{formatRupiah(tot.gajiFinance)}</td>
+                              <td className="py-3.5 px-4 text-right text-amber-600">
+                                -{formatRupiah(tot.potonganPenerima)}
+                                <span className="block text-[9px] text-slate-500 font-normal">({tot.porsiPenerima} porsi total)</span>
+                              </td>
+                              <td className="py-3.5 px-4 text-right text-green-600 text-sm">{formatRupiah(tot.labaBersih)}</td>
+                              <td className="py-3.5 px-4 text-right">{formatRupiah(tot.perMitra * 6)}</td>
+                              <td className="py-3.5 px-4 text-right">{formatRupiah(tot.perOrangKe7)}</td>
+                              <td className="py-3.5 px-4 text-right text-primary-600 text-sm">{formatRupiah(tot.sisaPT)}</td>
+                              <td className="py-3.5 px-4 no-print"></td>
+                            </tr>
+                          );
+                        })()}
+                      </tfoot>
+                    </table>
+                  </div>
+                )}
+
+                {weeklyRekapHistory.length > 0 && (
+                  <div className="pt-3 border-t border-slate-100 dark:border-slate-900 flex justify-end no-print">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const tot = weeklyRekapHistory.reduce((acc, w) => {
+                          acc.penjualan += (w.penjualan || 0);
+                          acc.pembelian += (w.pembelian || 0);
+                          acc.labaKotor += (w.labaKotor || 0);
+                          acc.tax += (w.tax || 0);
+                          acc.labaBersih += (w.labaBersih || 0);
+                          return acc;
+                        }, { penjualan: 0, pembelian: 0, labaKotor: 0, tax: 0, labaBersih: 0 });
+                        const hppCalc = tot.penjualan - tot.labaKotor;
+                        openSyncModal(tot.penjualan, hppCalc, tot.pembelian, tot.tax, tot.labaBersih);
+                      }}
+                      className="bg-primary-600 hover:bg-primary-700 text-white font-bold px-4 py-2.5 rounded-xl text-xs flex items-center gap-2 shadow-md active:scale-95 transition-all"
+                      title="Simpan total akumulasi bulanan ini langsung ke tabel Riwayat Laba Rugi Per Bulan di bawah"
+                    >
+                      <i data-lucide="calendar-plus" className="w-4 h-4"></i> Simpan Total Akumulasi Ini ke Riwayat Laba Rugi Per Bulan
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           ) : (
             <div className="space-y-8 font-semibold">
               {/* Input Profit Acuan Card */}
-              <div className="bg-white dark:bg-slate-955 p-6 rounded-2xl border border-slate-150 dark:border-slate-850 shadow-sm grid grid-cols-1 md:grid-cols-12 gap-6 no-print">
-                <div className="md:col-span-12">
-                  <h4 className="font-bold text-[10px] text-slate-450 uppercase tracking-wider mb-3">Profit Acuan Utama</h4>
+              <div className="bg-white dark:bg-slate-955 p-6 rounded-2xl border border-slate-150 dark:border-slate-850 shadow-sm space-y-5 no-print">
+                {/* Bagian Filter Periode Tanggal Laporan */}
+                <div className="bg-slate-50 dark:bg-slate-900/60 p-4 rounded-xl border border-slate-150 dark:border-slate-850 space-y-2">
+                  <div className="flex justify-between items-center flex-wrap gap-2">
+                    <h4 className="font-bold text-[10px] text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+                      <i data-lucide="calendar" className="w-3.5 h-3.5 text-primary-500"></i> Ambil Laba Dari Periode Tanggal Transaksi (Opsional)
+                    </h4>
+                    <span className="text-[9px] text-slate-400 font-semibold">Contoh: 15 Juli s/d 15 Agustus</span>
+                  </div>
+                  <div className="flex flex-wrap md:flex-nowrap gap-3 items-end pt-1">
+                    <div className="flex-1 min-w-[130px]">
+                      <label className="block text-[9px] text-slate-400 font-bold uppercase mb-1">Tanggal Mulai</label>
+                      <input 
+                        type="date" 
+                        value={manualPeriodStart} 
+                        onChange={(e) => setManualPeriodStart(e.target.value)}
+                        className="w-full bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 px-3 py-2 rounded-xl text-xs font-semibold focus:outline-none dark:text-white"
+                      />
+                    </div>
+                    <div className="flex-1 min-w-[130px]">
+                      <label className="block text-[9px] text-slate-400 font-bold uppercase mb-1">Tanggal Selesai</label>
+                      <input 
+                        type="date" 
+                        value={manualPeriodEnd} 
+                        onChange={(e) => setManualPeriodEnd(e.target.value)}
+                        className="w-full bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 px-3 py-2 rounded-xl text-xs font-semibold focus:outline-none dark:text-white"
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleCalculatePeriodProfit}
+                      className="bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 h-[38px] shadow-sm active:scale-95 transition-all shrink-0"
+                      title="Hitung otomatis total laba bersih dari semua transaksi di antara rentang tanggal ini"
+                    >
+                      <i data-lucide="calculator" className="w-4 h-4"></i> Hitung Laba Periode Ini
+                    </button>
+                  </div>
+                </div>
+
+                {/* Bagian Input Profit Acuan Utama */}
+                <div>
+                  <h4 className="font-bold text-[10px] text-slate-450 uppercase tracking-wider mb-3">Profit Acuan Utama Kalkulator</h4>
                   <div className="flex gap-4 items-end">
                     <div className="flex-1">
                       <label className="block text-[10px] text-slate-400 uppercase tracking-wide mb-1">Masukkan Jumlah Laba / Profit (Rp)</label>
@@ -9514,14 +10444,14 @@ function RekapLabaRugiModule({ invoices, buktiPembelian, globalSearch, settings,
                         setManualBaseProfit(netProfitStandard);
                         setManualBaseProfitInput(netProfitStandard === 0 ? '' : new Intl.NumberFormat('id-ID').format(netProfitStandard));
                       }}
-                      className="bg-primary-50 hover:bg-primary-100 text-primary-700 dark:bg-primary-950/20 dark:text-primary-400 px-4 py-2.5 rounded-xl font-bold border border-primary-100 dark:border-primary-900 text-xs flex items-center gap-1.5 h-[42px]"
-                      title="Salin dari Laba Bersih Standar saat ini"
+                      className="bg-primary-50 hover:bg-primary-100 text-primary-700 dark:bg-primary-950/20 dark:text-primary-400 px-4 py-2.5 rounded-xl font-bold border border-primary-100 dark:border-primary-900 text-xs flex items-center gap-1.5 h-[42px] shrink-0"
+                      title="Salin dari Laba Bersih Standar filter atas saat ini"
                     >
-                      <i data-lucide="copy" className="w-3.5 h-3.5"></i> Gunakan Laba Riil
+                      <i data-lucide="copy" className="w-3.5 h-3.5"></i> Gunakan Laba Filter Atas
                     </button>
                   </div>
-                  <span className="text-[9px] text-slate-400 block mt-1">
-                    Nilai acuan laba kotor/bersih yang ingin dibagi (misal laba seminggu atau sebulan). Anda bisa mengetik manual atau mengklik "Gunakan Laba Riil" untuk menyalin otomatis dari hasil transaksi terfilter saat ini.
+                  <span className="text-[9px] text-slate-400 block mt-1.5">
+                    Anda bisa mengetik nominal manual, atau menggunakan tombol "Hitung Laba Periode Ini" di atas untuk kalkulasi otomatis dari tanggal custom (seperti 15 Juli s/d 15 Agustus).
                   </span>
                 </div>
               </div>
@@ -9629,36 +10559,33 @@ function RekapLabaRugiModule({ invoices, buktiPembelian, globalSearch, settings,
                             </td>
                           </tr>
                         ) : (
-                          allocations.map((a, idx) => {
-                            const calculatedVal = a.type === 'percent' ? (manualBaseProfit * (a.value / 100)) : a.value;
-                            return (
-                              <tr key={a.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-900/10">
-                                <td className="py-3 px-6 font-extrabold text-slate-855 dark:text-white">{a.name}</td>
-                                <td className="py-3 px-6">
-                                  <span className={`px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase ${
-                                    a.type === 'percent' ? 'bg-indigo-55 text-indigo-700 dark:bg-indigo-950/35 dark:text-indigo-400' : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300'
-                                  }`}>
-                                    {a.type === 'percent' ? 'Persentase' : 'Nominal Flat'}
-                                  </span>
-                                </td>
-                                <td className="py-3 px-6 text-right font-mono font-semibold">
-                                  {a.type === 'percent' ? `${a.value}%` : formatRupiah(a.value)}
-                                </td>
-                                <td className="py-3 px-6 text-right font-extrabold text-amber-600 dark:text-amber-400">
-                                  {formatRupiah(calculatedVal)}
-                                </td>
-                                <td className="py-3 px-6 text-center no-print">
-                                  <button
-                                    onClick={() => handleRemoveAllocation(a.id)}
-                                    className="p-1.5 bg-red-50 hover:bg-red-100 text-red-600 dark:bg-red-950/20 dark:text-red-400 rounded-lg active:scale-95 transition-all"
-                                    title="Hapus Alokasi"
-                                  >
-                                    <i data-lucide="trash-2" className="w-3.5 h-3.5"></i>
-                                  </button>
-                                </td>
-                              </tr>
-                            );
-                          })
+                          computeAllocationsWithOrder(manualBaseProfit, allocations).map((a, idx) => (
+                            <tr key={a.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-900/10">
+                              <td className="py-3 px-6 font-extrabold text-slate-855 dark:text-white">{a.name}</td>
+                              <td className="py-3 px-6">
+                                <span className={`px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase ${
+                                  a.type === 'percent' ? 'bg-indigo-55 text-indigo-700 dark:bg-indigo-950/35 dark:text-indigo-400' : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300'
+                                }`}>
+                                  {a.type === 'percent' ? 'Persentase' : 'Nominal Flat'}
+                                </span>
+                              </td>
+                              <td className="py-3 px-6 text-right font-mono font-semibold">
+                                {a.type === 'percent' ? `${a.value}%` : formatRupiah(a.value)}
+                              </td>
+                              <td className="py-3 px-6 text-right font-extrabold text-amber-600 dark:text-amber-400">
+                                {formatRupiah(a.computed)}
+                              </td>
+                              <td className="py-3 px-6 text-center no-print">
+                                <button
+                                  onClick={() => handleRemoveAllocation(a.id)}
+                                  className="p-1.5 bg-red-50 hover:bg-red-100 text-red-600 dark:bg-red-950/20 dark:text-red-400 rounded-lg active:scale-95 transition-all"
+                                  title="Hapus Alokasi"
+                                >
+                                  <i data-lucide="trash-2" className="w-3.5 h-3.5"></i>
+                                </button>
+                              </td>
+                            </tr>
+                          ))
                         )}
                       </tbody>
                     </table>
@@ -9671,71 +10598,94 @@ function RekapLabaRugiModule({ invoices, buktiPembelian, globalSearch, settings,
                     <h4 className="font-bold text-[10px] text-slate-450 uppercase tracking-wider border-b pb-2 border-slate-100 dark:border-slate-900">
                       Ringkasan Kalkulasi Manual
                     </h4>
-                    <div className="space-y-3 text-xs">
-                      <div className="flex justify-between pb-2 border-b border-slate-100 dark:border-slate-900">
-                        <span className="text-slate-500 font-medium">Profit Acuan Utama</span>
-                        <span className="font-extrabold text-slate-800 dark:text-white">{formatRupiah(manualBaseProfit)}</span>
-                      </div>
-                      <div className="flex justify-between pb-2 border-b border-slate-100 dark:border-slate-900">
-                        <span className="text-slate-500 font-medium">Total Alokasi Pembagian</span>
-                        <span className="font-extrabold text-red-500">
-                          -{formatRupiah(allocations.reduce((sum, a) => sum + (a.type === 'percent' ? (manualBaseProfit * (a.value / 100)) : a.value), 0))}
-                        </span>
-                      </div>
-                      
-                      {/* Calculate remaining profit */}
-                      {(() => {
-                        const totalAllocated = allocations.reduce((sum, a) => sum + (a.type === 'percent' ? (manualBaseProfit * (a.value / 100)) : a.value), 0);
-                        const remaining = manualBaseProfit - totalAllocated;
-                        return (
-                          <>
-                            <div className="pt-3 flex justify-between font-extrabold text-sm border-t-2 border-dashed border-slate-200 dark:border-slate-800">
-                              <span>Sisa Kas PT (Sisa Laba Bersih)</span>
-                              <span className={`text-base ${remaining >= 0 ? 'text-green-600' : 'text-red-655'}`}>
-                                {formatRupiah(remaining)}
-                              </span>
+                    {(() => {
+                      const computedList = computeAllocationsWithOrder(manualBaseProfit, allocations);
+                      const totalAllocVal = computedList.reduce((sum, a) => sum + a.computed, 0);
+                      const remainingKas = Math.max(0, manualBaseProfit - totalAllocVal);
+                      return (
+                        <>
+                          <div className="space-y-3 text-xs">
+                            <div className="flex justify-between pb-2 border-b border-slate-100 dark:border-slate-900">
+                              <span className="text-slate-500 font-medium">Profit Acuan Utama</span>
+                              <span className="font-extrabold text-slate-800 dark:text-white">{formatRupiah(manualBaseProfit)}</span>
                             </div>
-                            <div className="bg-slate-50 dark:bg-slate-900/60 p-3.5 rounded-xl border border-slate-100 dark:border-slate-850 text-[10px] leading-relaxed text-slate-450 dark:text-slate-400 mt-2 font-medium">
-                              Sisa Kas PT adalah sisa laba bersih akhir setelah dikurangi seluruh alokasi potongan flat & persentase mitra yang Anda tambahkan.
+                            <div className="flex justify-between pb-2 border-b border-slate-100 dark:border-slate-900">
+                              <span className="text-slate-500 font-medium">Total Alokasi Pembagian</span>
+                              <span className="font-extrabold text-red-500">-{formatRupiah(totalAllocVal)}</span>
                             </div>
+                            <div className="p-4 bg-emerald-50 dark:bg-emerald-950/20 rounded-xl border border-emerald-100 dark:border-emerald-900 space-y-1">
+                              <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold uppercase tracking-wider block">Sisa Kas PT / Laba Bersih</span>
+                              <span className="font-extrabold text-emerald-700 dark:text-emerald-400 text-xl block">{formatRupiah(remainingKas)}</span>
+                            </div>
+                          </div>
 
-                            {/* Form Simpan / Update ke Riwayat */}
-                            <div className="pt-4 border-t border-slate-100 dark:border-slate-900 space-y-3 no-print">
-                              {editingHistoryId && (
-                                <div className="p-2.5 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900 rounded-xl flex items-center justify-between text-xs">
-                                  <span className="font-bold text-amber-800 dark:text-amber-300 flex items-center gap-1.5 text-[11px]">
-                                    <i data-lucide="edit-3" className="w-3.5 h-3.5"></i> Mode Edit Catatan
-                                  </span>
-                                  <button 
-                                    type="button"
-                                    onClick={() => { setEditingHistoryId(null); setManualRecordTitle(''); }}
-                                    className="text-[10px] font-bold text-amber-700 underline hover:text-amber-900"
-                                  >
-                                    Batal Edit
-                                  </button>
-                                </div>
-                              )}
-                              <label className="block text-[10px] text-slate-400 uppercase tracking-wide">Nama / Periode Catatan</label>
-                              <input 
-                                type="text" 
-                                placeholder="Contoh: Laba Bulan Agustus 2026"
-                                value={manualRecordTitle}
-                                onChange={(e) => setManualRecordTitle(e.target.value)}
-                                className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-3 py-2 rounded-xl text-xs font-semibold focus:border-primary-500 focus:outline-none dark:text-white"
-                              />
+                          {/* Form Simpan / Update ke Riwayat */}
+                          <div className="pt-4 border-t border-slate-100 dark:border-slate-900 space-y-3 no-print">
+                            {editingHistoryId && (
+                              <div className="p-2.5 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900 rounded-xl flex items-center justify-between text-xs">
+                                <span className="font-bold text-amber-800 dark:text-amber-300 flex items-center gap-1.5 text-[11px]">
+                                  <i data-lucide="edit-3" className="w-3.5 h-3.5"></i> Mode Edit Catatan
+                                </span>
+                                <button 
+                                  type="button"
+                                  onClick={() => { setEditingHistoryId(null); setManualRecordTitle(''); }}
+                                  className="text-[10px] font-bold text-amber-700 underline hover:text-amber-900"
+                                >
+                                  Batal Edit
+                                </button>
+                              </div>
+                            )}
+                            <label className="block text-[10px] text-slate-400 uppercase tracking-wide">Nama / Periode Catatan</label>
+                            <input 
+                              type="text" 
+                              placeholder="Contoh: Laba Bulan Agustus 2026"
+                              value={manualRecordTitle}
+                              onChange={(e) => setManualRecordTitle(e.target.value)}
+                              className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-3 py-2 rounded-xl text-xs font-semibold focus:border-primary-500 focus:outline-none dark:text-white"
+                            />
+                            <button
+                              type="button"
+                              onClick={handleSaveManualHistory}
+                              className={`w-full ${editingHistoryId ? 'bg-amber-600 hover:bg-amber-700' : 'bg-primary-600 hover:bg-primary-700'} text-white font-bold py-2.5 rounded-xl shadow-md flex items-center justify-center gap-2 active:scale-95 transition-all text-xs`}
+                            >
+                              <i data-lucide={editingHistoryId ? "save" : "bookmark"} className="w-4 h-4"></i>
+                              {editingHistoryId ? 'Update Catatan Riwayat' : 'Simpan Ke Riwayat Manual'}
+                            </button>
+
+                            <div className="grid grid-cols-1 gap-2 pt-2 border-t border-slate-100 dark:border-slate-900">
                               <button
                                 type="button"
-                                onClick={handleSaveManualHistory}
-                                className={`w-full ${editingHistoryId ? 'bg-amber-600 hover:bg-amber-700' : 'bg-primary-600 hover:bg-primary-700'} text-white font-bold py-2.5 rounded-xl shadow-md flex items-center justify-center gap-2 active:scale-95 transition-all text-xs`}
+                                onClick={() => {
+                                  const pTitle = manualRecordTitle || (manualPeriodStart && manualPeriodEnd ? `Laba Periode (${manualPeriodStart} s/d ${manualPeriodEnd})` : `Catatan Laba Periode (${new Date().toLocaleDateString('id-ID')})`);
+                                  const mappedAllocs = allocations.map(a => ({
+                                    name: a.name,
+                                    type: a.type,
+                                    val: a.val,
+                                    computed: a.type === 'percent' ? (manualBaseProfit * (Number(a.val || 0) / 100)) : Number(a.val || 0)
+                                  }));
+                                  openSyncModal(manualBaseProfit, 0, 0, 0, remainingKas, pTitle, mappedAllocs);
+                                }}
+                                className="w-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-900 dark:hover:bg-slate-850 text-slate-700 dark:text-slate-200 font-bold py-2 rounded-xl border border-slate-200 dark:border-slate-800 flex items-center justify-center gap-1.5 active:scale-95 transition-all text-[11px]"
+                                title="Sinkronkan angka kalkulasi ini langsung ke tabel Riwayat Laba Rugi Per Bulan di bawah"
                               >
-                                <i data-lucide={editingHistoryId ? "save" : "bookmark"} className="w-4 h-4"></i>
-                                {editingHistoryId ? 'Update Catatan Riwayat' : 'Simpan Ke Riwayat Manual'}
+                                <i data-lucide="calendar-check" className="w-3.5 h-3.5 text-primary-500"></i> Simpan ke Riwayat Laba Rugi Per Bulan
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setLabaRugiMode('mitra');
+                                  if (showToast) showToast("Beralih ke tampilan Mode Distribusi Mitra.");
+                                }}
+                                className="w-full bg-primary-50 hover:bg-primary-100 dark:bg-primary-950/30 text-primary-700 dark:text-primary-300 font-bold py-2 rounded-xl border border-primary-100 dark:border-primary-900 flex items-center justify-center gap-1.5 active:scale-95 transition-all text-[11px]"
+                                title="Beralih ke tampilan Mode Distribusi Mitra"
+                              >
+                                <i data-lucide="arrow-right-circle" className="w-3.5 h-3.5"></i> Lihat Hasil di Mode Distribusi Mitra
                               </button>
                             </div>
-                          </>
-                        );
-                      })()}
-                    </div>
+                          </div>
+                        </>
+                      );
+                    })()}
                   </div>
                 </div>
               </div>
@@ -9751,9 +10701,31 @@ function RekapLabaRugiModule({ invoices, buktiPembelian, globalSearch, settings,
                       Daftar hasil perhitungan kalkulator manasuka yang pernah Anda simpan (Edit & Hapus memerlukan Password)
                     </span>
                   </div>
-                  <span className="text-[10px] bg-primary-50 dark:bg-primary-950/30 text-primary-600 dark:text-primary-400 font-bold px-3 py-1 rounded-full border border-primary-100 dark:border-primary-900">
-                    {manualHistory.length} Catatan Tersimpan
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] bg-primary-50 dark:bg-primary-950/30 text-primary-600 dark:text-primary-400 font-bold px-3 py-1 rounded-full border border-primary-100 dark:border-primary-900">
+                      {manualHistory.length} Catatan Tersimpan
+                    </span>
+                    {manualHistory.length > 0 && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => handleAutoSyncAllManualHistoryToMonth()}
+                          className="bg-primary-600 hover:bg-primary-700 text-white px-3 py-1.5 rounded-xl font-bold text-[10px] flex items-center gap-1.5 active:scale-95 transition-all shadow-md"
+                          title="Gabungkan seluruh catatan riwayat manual di atas secara lengkap ke Riwayat Laba Rugi Per Bulan"
+                        >
+                          <i data-lucide="zap" className="w-3.5 h-3.5"></i> Sinkronkan Semua Ke Riwayat Bulanan
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => requestPasswordAuth('clear_all_manual_history', null)}
+                          className="bg-red-50 hover:bg-red-100 text-red-700 dark:bg-red-950/30 dark:text-red-400 border border-red-200 dark:border-red-900 px-3 py-1.5 rounded-xl font-bold text-[10px] flex items-center gap-1.5 active:scale-95 transition-all shadow-sm"
+                          title="Hapus seluruh riwayat kalkulasi manual tersimpan (Memerlukan Password)"
+                        >
+                          <i data-lucide="trash-2" className="w-3.5 h-3.5"></i> Hapus Semua
+                        </button>
+                      </>
+                    )}
+                  </div>
                 </div>
 
                 {manualHistory.length === 0 ? (
@@ -9796,13 +10768,27 @@ function RekapLabaRugiModule({ invoices, buktiPembelian, globalSearch, settings,
                                 </span>
                               </td>
                               <td className="py-3 px-4 text-right font-semibold text-red-500">
-                                -{formatRupiah(h.totalAllocated)}
+                                {(() => {
+                                  const val = (h.totalAllocated !== undefined && !isNaN(Number(h.totalAllocated)))
+                                    ? Number(h.totalAllocated)
+                                    : ((h.deductions !== undefined && !isNaN(Number(h.deductions)))
+                                      ? Number(h.deductions)
+                                      : (Array.isArray(h.allocations) ? h.allocations.reduce((sum, a) => sum + (Number(a.computed) || Number(a.val) || Number(a.value) || 0), 0) : 0));
+                                  return `-${formatRupiah(val)}`;
+                                })()}
                               </td>
                               <td className={`py-3 px-4 text-right font-extrabold ${h.remaining >= 0 ? 'text-green-600' : 'text-red-500'}`}>
                                 {formatRupiah(h.remaining)}
                               </td>
                               <td className="py-3 px-4 text-center">
                                 <div className="flex justify-center gap-1.5">
+                                  <button
+                                    onClick={() => handleDirectSyncManualHistoryToMonth(h)}
+                                    className="px-2.5 py-1 bg-green-50 hover:bg-green-100 text-green-700 dark:bg-green-950/40 dark:text-green-300 border border-green-200 dark:border-green-800 rounded-lg text-[10px] font-bold flex items-center gap-1 active:scale-95 transition-all shadow-xs"
+                                    title="Langsung gabungkan catatan periode ini ke Riwayat Laba Rugi Per Bulan"
+                                  >
+                                    <i data-lucide="plus-circle" className="w-3 h-3 text-green-600"></i> + Bulanan
+                                  </button>
                                   <button
                                     onClick={() => handleLoadManualHistory(h)}
                                     className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-200 rounded-lg text-[10px] font-bold flex items-center gap-1 active:scale-95 transition-all"
@@ -9830,6 +10816,40 @@ function RekapLabaRugiModule({ invoices, buktiPembelian, globalSearch, settings,
                           );
                         })}
                       </tbody>
+                      <tfoot>
+                        {(() => {
+                          const totAcuan = manualHistory.reduce((acc, curr) => acc + Number(curr.manualBaseProfit || 0), 0);
+                          const totAlokasi = manualHistory.reduce((acc, curr) => {
+                            const val = (curr.totalAllocated !== undefined && !isNaN(Number(curr.totalAllocated)))
+                              ? Number(curr.totalAllocated)
+                              : ((curr.deductions !== undefined && !isNaN(Number(curr.deductions)))
+                                ? Number(curr.deductions)
+                                : (Array.isArray(curr.allocations) ? curr.allocations.reduce((sum, a) => sum + (Number(a.computed) || Number(a.val) || Number(a.value) || 0), 0) : 0));
+                            return acc + val;
+                          }, 0);
+                          const totSisa = manualHistory.reduce((acc, curr) => acc + Number(curr.remaining || 0), 0);
+                          return (
+                            <tr className="bg-slate-100/90 dark:bg-slate-900/90 font-extrabold text-xs border-t-2 border-slate-300 dark:border-slate-700">
+                              <td colSpan="2" className="py-3 px-4 text-slate-700 dark:text-slate-200 uppercase tracking-wider text-[11px]">
+                                TOTAL JUMLAH KESELURUHAN ({manualHistory.length} CATATAN)
+                              </td>
+                              <td className="py-3 px-4 text-right text-primary-600 dark:text-primary-400 font-black">
+                                {formatRupiah(totAcuan)}
+                              </td>
+                              <td className="py-3 px-4 text-center text-slate-400 text-[10px]">
+                                -
+                              </td>
+                              <td className="py-3 px-4 text-right text-red-500 font-bold">
+                                -{formatRupiah(totAlokasi)}
+                              </td>
+                              <td className="py-3 px-4 text-right text-green-600 font-black text-sm">
+                                {formatRupiah(totSisa)}
+                              </td>
+                              <td className="py-3 px-4 text-center"></td>
+                            </tr>
+                          );
+                        })()}
+                      </tfoot>
                     </table>
                   </div>
                 )}
@@ -9848,9 +10868,21 @@ function RekapLabaRugiModule({ invoices, buktiPembelian, globalSearch, settings,
                   Rekapitulasi pendapatan, HPP, pembelian, dan laba bersih tiap periode bulan
                 </span>
               </div>
-              <span className="text-[10px] bg-primary-50 dark:bg-primary-950/30 text-primary-600 dark:text-primary-400 font-bold px-3 py-1 rounded-full border border-primary-100 dark:border-primary-900">
-                {monthlyHistory.length} Bulan Ter-rekam
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] bg-primary-50 dark:bg-primary-950/30 text-primary-600 dark:text-primary-400 font-bold px-3 py-1 rounded-full border border-primary-100 dark:border-primary-900">
+                  {monthlyHistory.length} Bulan Ter-rekam
+                </span>
+                {Object.keys(monthlyOverrides).length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => requestPasswordAuth('clear_all_monthly_overrides', null)}
+                    className="bg-amber-50 hover:bg-amber-100 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400 border border-amber-200 dark:border-amber-900 px-3 py-1.5 rounded-xl font-bold text-[10px] flex items-center gap-1.5 active:scale-95 transition-all shadow-sm"
+                    title="Reset seluruh kustomisasi riwayat laba rugi per bulan kembali ke data transaksi asli (Memerlukan Password)"
+                  >
+                    <i data-lucide="rotate-ccw" className="w-3.5 h-3.5"></i> Reset Kustomisasi
+                  </button>
+                )}
+              </div>
             </div>
 
             {monthlyHistory.length === 0 ? (
@@ -9909,15 +10941,11 @@ function RekapLabaRugiModule({ invoices, buktiPembelian, globalSearch, settings,
                           <td className="py-3 px-4 text-center no-print">
                             <div className="flex justify-center items-center gap-1.5">
                               <button
-                                onClick={() => handleMonthSelect(m.monthKey)}
-                                className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all ${
-                                  isSelected
-                                    ? 'bg-primary-600 text-white shadow-sm'
-                                    : 'bg-slate-100 hover:bg-primary-50 hover:text-primary-600 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300'
-                                }`}
-                                title="Filter tampilan neraca ke bulan ini"
+                                onClick={() => setDetailMonthModal({ isOpen: true, monthKey: m.monthKey, monthLabel: m.monthLabel, data: m })}
+                                className="px-2.5 py-1 bg-primary-50 hover:bg-primary-100 text-primary-700 dark:bg-primary-950/40 dark:text-primary-300 border border-primary-200 dark:border-primary-800 rounded-lg text-[10px] font-bold flex items-center gap-1 active:scale-95 transition-all"
+                                title="Lihat rincian catatan periode yang ter-rekam pada bulan ini"
                               >
-                                {isSelected ? 'Tersaring' : 'Lihat'}
+                                <i data-lucide="list-tree" className="w-3 h-3 text-primary-500"></i> Lihat Rincian
                               </button>
                               <button
                                 onClick={() => requestPasswordAuth('edit_month', m)}
@@ -9980,7 +11008,7 @@ function RekapLabaRugiModule({ invoices, buktiPembelian, globalSearch, settings,
                     <div>
                       <h4 className="font-bold text-sm text-slate-800 dark:text-white">Verifikasi Keamanan</h4>
                       <span className="text-[10px] text-slate-400 font-medium">
-                        {authModal.actionType === 'delete_history' ? 'Konfirmasi Penghapusan Riwayat' : 'Konfirmasi Edit Riwayat'}
+                        {authModal.actionType.startsWith('clear_all') ? 'Konfirmasi Hapus Semua Riwayat' : (authModal.actionType.startsWith('delete') ? 'Konfirmasi Penghapusan Riwayat' : 'Konfirmasi Edit Riwayat')}
                       </span>
                     </div>
                   </div>
@@ -9994,10 +11022,14 @@ function RekapLabaRugiModule({ invoices, buktiPembelian, globalSearch, settings,
 
                 <p className="text-xs text-slate-600 dark:text-slate-300 font-medium leading-relaxed">
                   Silakan masukkan password akun Anda untuk melanjutkan tindakan{' '}
-                  <strong className={authModal.actionType === 'delete_history' ? 'text-red-500' : 'text-primary-600'}>
-                    {authModal.actionType === 'delete_history' ? 'HAPUS' : 'EDIT'}
+                  <strong className={authModal.actionType.includes('delete') || authModal.actionType.includes('clear') ? 'text-red-500' : 'text-primary-600'}>
+                    {authModal.actionType.includes('delete') || authModal.actionType.includes('clear') ? 'HAPUS' : 'EDIT'}
                   </strong>{' '}
-                  pada catatan <strong className="text-slate-800 dark:text-white">"{authModal.targetData?.title}"</strong>.
+                  {authModal.targetData ? (
+                    <>pada catatan <strong className="text-slate-800 dark:text-white">"{authModal.targetData?.title || authModal.targetData?.periodLabel}"</strong>.</>
+                  ) : (
+                    <>pada seluruh data riwayat tersimpan.</>
+                  )}
                 </p>
 
                 {authModal.error && (
@@ -10149,6 +11181,283 @@ function RekapLabaRugiModule({ invoices, buktiPembelian, globalSearch, settings,
                     </button>
                   </div>
                 </form>
+              </div>
+            </div>
+          )}
+
+          {/* Modal Simpan / Akumulasi ke Riwayat Laba Rugi Per Bulan */}
+          {syncModal.isOpen && (
+            <div className="fixed inset-0 z-[99999] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in no-print">
+              <div className="bg-white dark:bg-slate-950 max-w-md w-full rounded-2xl shadow-2xl border border-slate-150 dark:border-slate-850 p-6 space-y-4 text-xs font-semibold">
+                <div className="flex justify-between items-center border-b pb-3 border-slate-100 dark:border-slate-900">
+                  <h3 className="font-extrabold text-sm text-slate-800 dark:text-white flex items-center gap-2">
+                    <i data-lucide="calendar-plus" className="w-4 h-4 text-primary-500"></i> Simpan / Akumulasi Ke Riwayat Bulanan
+                  </h3>
+                  <button 
+                    type="button" 
+                    onClick={() => setSyncModal(prev => ({ ...prev, isOpen: false }))} 
+                    className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                  >
+                    <i data-lucide="x" className="w-4 h-4"></i>
+                  </button>
+                </div>
+
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Judul / Nama Catatan Periode</label>
+                    <input 
+                      type="text" 
+                      value={syncModal.periodTitle} 
+                      onChange={(e) => setSyncModal({ ...syncModal, periodTitle: e.target.value })}
+                      placeholder="Contoh: Laba Periode (17/08/2026 s/d 21/08/2026)"
+                      className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-3 py-2 rounded-xl text-xs font-bold dark:text-white"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Pilih Periode Bulan Tujuan</label>
+                    <input 
+                      type="month" 
+                      value={syncModal.selectedMonthKey} 
+                      onChange={(e) => setSyncModal({ ...syncModal, selectedMonthKey: e.target.value })}
+                      className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-3 py-2 rounded-xl text-xs font-bold dark:text-white"
+                    />
+                  </div>
+
+                  <div className="p-3.5 bg-primary-50/60 dark:bg-primary-950/30 rounded-xl border border-primary-100 dark:border-primary-900 space-y-2 text-[11px]">
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">Nilai Baru yang Ditambahkan:</span>
+                      <span className="font-extrabold text-primary-600 dark:text-primary-400">{formatRupiah(syncModal.revenue)}</span>
+                    </div>
+                    {monthlyOverrides[syncModal.selectedMonthKey] && (
+                      <div className="flex justify-between pt-1 border-t border-primary-200/50 dark:border-primary-800/50">
+                        <span className="text-slate-500">Nilai Ter-rekam Saat Ini ({syncModal.selectedMonthKey}):</span>
+                        <span className="font-bold text-slate-700 dark:text-slate-300">{formatRupiah(monthlyOverrides[syncModal.selectedMonthKey].revenue)}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between pt-1.5 border-t border-primary-200 dark:border-primary-800 font-extrabold text-slate-800 dark:text-white">
+                      <span>Total Akumulasi Baru ({syncModal.selectedMonthKey}):</span>
+                      <span className="text-green-600 font-extrabold text-sm">
+                        {formatRupiah(
+                          syncModal.isAccumulate 
+                            ? ((monthlyOverrides[syncModal.selectedMonthKey]?.revenue || 0) + syncModal.revenue)
+                            : syncModal.revenue
+                        )}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-start gap-2 pt-1 bg-slate-50 dark:bg-slate-900 p-2.5 rounded-xl border border-slate-200 dark:border-slate-800">
+                    <input 
+                      type="checkbox" 
+                      id="accumulateCheck"
+                      checked={syncModal.isAccumulate}
+                      onChange={(e) => setSyncModal({ ...syncModal, isAccumulate: e.target.checked })}
+                      className="w-4 h-4 accent-primary-600 rounded mt-0.5"
+                    />
+                    <label htmlFor="accumulateCheck" className="text-[10px] text-slate-600 dark:text-slate-300 font-semibold cursor-pointer leading-tight">
+                      Tambahkan (Akumulasi) ke riwayat bulan ini jika sudah ada data sebelumnya (Misal: Gabungkan Periode 1 & Periode 2)
+                    </label>
+                  </div>
+                </div>
+
+                <div className="flex gap-2 pt-3 border-t border-slate-100 dark:border-slate-900">
+                  <button
+                    type="button"
+                    onClick={() => setSyncModal(prev => ({ ...prev, isOpen: false }))}
+                    className="flex-1 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 py-2.5 rounded-xl font-bold text-xs"
+                  >
+                    Batal
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleConfirmSyncToMonthlyHistory}
+                    className="flex-1 bg-primary-600 hover:bg-primary-700 text-white py-2.5 rounded-xl font-bold text-xs shadow-md active:scale-95 transition-all"
+                  >
+                    Simpan Ke Riwayat
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+          {/* Modal Rincian Buku Besar & Transaksi Per Periode */}
+          {detailMonthModal.isOpen && (
+            <div className="fixed inset-0 z-[99999] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in no-print">
+              <div className="bg-white dark:bg-slate-950 max-w-2xl w-full rounded-2xl shadow-2xl border border-slate-150 dark:border-slate-850 p-6 space-y-4 text-xs font-semibold max-h-[90vh] flex flex-col">
+                <div className="flex items-center justify-between border-b pb-3 border-slate-100 dark:border-slate-850 shrink-0">
+                  <div className="flex items-center gap-2.5">
+                    <div className="p-2.5 bg-primary-50 dark:bg-primary-950/50 text-primary-600 dark:text-primary-400 rounded-xl">
+                      <i data-lucide="book-open" className="w-5 h-5"></i>
+                    </div>
+                    <div>
+                      <h4 className="font-extrabold text-sm text-slate-800 dark:text-white">Buku Besar & Rincian Transaksi {detailMonthModal.monthLabel}</h4>
+                      <span className="text-[10px] text-slate-400 font-medium">Buku besar transaksi laba per periode & alokasi potongan mitra</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        handleAutoSyncAllManualHistoryToMonth(detailMonthModal.monthKey);
+                        setDetailMonthModal(prev => ({
+                          ...prev,
+                          data: monthlyOverrides[detailMonthModal.monthKey] || prev.data
+                        }));
+                      }}
+                      className="bg-primary-50 hover:bg-primary-100 dark:bg-primary-950/40 text-primary-700 dark:text-primary-300 border border-primary-200 dark:border-primary-800 font-bold px-3 py-1.5 rounded-xl text-[11px] flex items-center gap-1.5 active:scale-95 transition-all"
+                      title="Sinkronkan otomatis seluruh catatan dari Riwayat Kalkulasi Manual Ter-Simpan ke bulan ini"
+                    >
+                      <i data-lucide="zap" className="w-3.5 h-3.5 text-primary-500"></i> Auto-Sync Riwayat Manual
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handlePrintLaporanBulanan(detailMonthModal.monthLabel, detailMonthModal.data)}
+                      className="bg-green-600 hover:bg-green-700 text-white font-bold px-3 py-1.5 rounded-xl text-[11px] flex items-center gap-1.5 shadow-md active:scale-95 transition-all"
+                      title="Cetak Laporan Bulanan A4 Landscape"
+                    >
+                      <i data-lucide="printer" className="w-3.5 h-3.5"></i> Cetak Laporan Bulanan
+                    </button>
+                    <button
+                      onClick={() => setDetailMonthModal({ isOpen: false, monthKey: '', monthLabel: '', data: null })}
+                      className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1 rounded-lg"
+                    >
+                      <i data-lucide="x" className="w-4 h-4"></i>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Ringkasan Akumulasi Bulan Ini */}
+                <div className="grid grid-cols-3 gap-3 p-3.5 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-150 dark:border-slate-850 text-xs shrink-0">
+                  <div>
+                    <span className="text-[10px] text-slate-400 uppercase font-bold block">Profit Acuan (Debit)</span>
+                    <span className="font-bold text-primary-600 text-sm">{formatRupiah(detailMonthModal.data?.revenue || 0)}</span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-slate-400 uppercase font-bold block">Total Alokasi (Kredit)</span>
+                    <span className="font-bold text-red-500 text-sm">
+                      -{formatRupiah((detailMonthModal.data?.revenue || 0) - (detailMonthModal.data?.labaBersih || 0))}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-slate-400 uppercase font-bold block">Sisa Laba Bersih Akhir</span>
+                    <span className="font-extrabold text-green-600 text-sm">{formatRupiah(detailMonthModal.data?.labaBersih || 0)}</span>
+                  </div>
+                </div>
+
+                {/* Buku Besar Ledger Table */}
+                <div className="flex-1 overflow-y-auto space-y-3 pr-1">
+                  <div className="flex items-center justify-between border-b pb-1.5 border-slate-100 dark:border-slate-850">
+                    <h5 className="text-[10px] uppercase font-bold tracking-wider text-slate-400">
+                      Jurnal Transaksi Per Periode ({detailMonthModal.data?.periodDetails?.length || 0} Periode Ter-rekam)
+                    </h5>
+                    <span className="text-[10px] text-slate-400 italic">Diurutkan berdasarkan waktu input</span>
+                  </div>
+                  
+                  {(!detailMonthModal.data?.periodDetails || detailMonthModal.data?.periodDetails.length === 0) ? (
+                    <div className="p-6 text-center text-slate-400 italic text-[11px] bg-slate-50 dark:bg-slate-900/40 rounded-xl border border-dashed border-slate-200 dark:border-slate-800 space-y-1">
+                      <i data-lucide="info" className="w-5 h-5 mx-auto text-slate-300"></i>
+                      <p>Belum ada rincian catatan periode khusus untuk bulan ini.</p>
+                      <span className="text-[10px] text-slate-400 block">Data akumulasi bulan ini bersumber langsung dari transaksi sistem.</span>
+                    </div>
+                  ) : (
+                    detailMonthModal.data.periodDetails.map((item, idx) => (
+                      <div key={idx} className="p-3.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl space-y-2.5 shadow-xs hover:border-primary-300 transition-colors">
+                        <div className="flex items-start justify-between gap-3 border-b pb-2 border-slate-100 dark:border-slate-800/80">
+                          <div>
+                            <div className="font-bold text-slate-800 dark:text-white text-xs flex items-center gap-1.5">
+                              <span className="w-5 h-5 rounded-full bg-primary-100 dark:bg-primary-950 text-primary-600 dark:text-primary-400 flex items-center justify-center text-[10px] font-extrabold shrink-0">{idx + 1}</span>
+                              {item.title}
+                            </div>
+                            <span className="text-[10px] text-slate-400 ml-6 block font-medium">{item.date}</span>
+                          </div>
+                          <div className="flex items-center gap-3 shrink-0">
+                            <div className="text-right">
+                              <span className="text-[9px] text-slate-400 uppercase block">Sisa Laba Bersih</span>
+                              <span className="font-extrabold text-green-600 text-sm">{formatRupiah(item.labaBersih)}</span>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => handleDeletePeriodDetail(detailMonthModal.monthKey, idx)}
+                              className="p-1.5 bg-red-50 hover:bg-red-100 text-red-600 dark:bg-red-950/30 dark:text-red-400 rounded-lg text-xs font-bold active:scale-95 transition-all"
+                              title="Hapus rincian ini dari bulan ini"
+                            >
+                              <i data-lucide="trash-2" className="w-3.5 h-3.5"></i>
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Detail Perhitungan Debit & Kredit Alokasi */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-[11px] bg-slate-50/70 dark:bg-slate-955/60 p-2.5 rounded-lg">
+                          <div>
+                            <span className="text-[9px] text-slate-400 uppercase font-bold block">Profit Acuan (Omset)</span>
+                            <span className="font-bold text-primary-600">{formatRupiah(item.revenue || 0)}</span>
+                          </div>
+                          <div>
+                            <span className="text-[9px] text-slate-400 uppercase font-bold block">Total Potongan Alokasi</span>
+                            <span className="font-bold text-red-500">-{formatRupiah((item.revenue || 0) - (item.labaBersih || 0))}</span>
+                          </div>
+                        </div>
+
+                        {/* Breakdown Table Rincian Potongan */}
+                        {Array.isArray(item.allocations) && item.allocations.length > 0 && (
+                          <div className="pt-1.5 space-y-1">
+                            <span className="text-[9.5px] text-slate-500 uppercase font-extrabold block">
+                              Rincian Alokasi Potongan & Pembagian:
+                            </span>
+                            <div className="overflow-x-auto border border-slate-200 dark:border-slate-800 rounded-xl">
+                              <table className="w-full text-left text-[10px] border-collapse bg-slate-50/50 dark:bg-slate-900/50">
+                                <thead>
+                                  <tr className="bg-slate-100 dark:bg-slate-850 text-slate-500 uppercase font-bold text-[8.5px] border-b border-slate-200 dark:border-slate-800">
+                                    <th className="py-1.5 px-3">Nama Alokasi</th>
+                                    <th className="py-1.5 px-3 text-center">Jenis</th>
+                                    <th className="py-1.5 px-3 text-right">Nilai Input</th>
+                                    <th className="py-1.5 px-3 text-right">Hasil Rupiah</th>
+                                  </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-150 dark:divide-slate-850">
+                                  {item.allocations.map((al, aIdx) => {
+                                    const valNum = Number(al.value !== undefined ? al.value : (al.val !== undefined ? al.val : 0));
+                                    const compVal = (al.computed && Number(al.computed) > 0)
+                                      ? Number(al.computed)
+                                      : (al.type === 'percent' ? ((item.revenue || 0) * (valNum / 100)) : valNum);
+                                    const jenisStr = al.type === 'percent' ? 'Persentase' : 'Nominal Flat';
+                                    const inputStr = al.type === 'percent' ? `${valNum}%` : formatRupiah(valNum);
+                                    return (
+                                      <tr key={aIdx} className="hover:bg-white dark:hover:bg-slate-800 transition-colors">
+                                        <td className="py-1.5 px-3 font-bold text-slate-800 dark:text-white">{al.name}</td>
+                                        <td className="py-1.5 px-3 text-center text-slate-500 font-medium">{jenisStr}</td>
+                                        <td className="py-1.5 px-3 text-right font-bold text-slate-700 dark:text-slate-300">{inputStr}</td>
+                                        <td className="py-1.5 px-3 text-right font-extrabold text-red-500">-{formatRupiah(compVal)}</td>
+                                      </tr>
+                                    );
+                                  })}
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ))
+                  )}
+                </div>
+
+                {/* Footer Modal Actions */}
+                <div className="pt-3 border-t border-slate-100 dark:border-slate-850 flex gap-2 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => handlePrintLaporanBulanan(detailMonthModal.monthLabel, detailMonthModal.data)}
+                    className="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold py-2.5 rounded-xl text-xs flex items-center justify-center gap-2 shadow-md active:scale-95 transition-all"
+                  >
+                    <i data-lucide="printer" className="w-4 h-4"></i> Cetak Laporan Bulanan A4
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDetailMonthModal({ isOpen: false, monthKey: '', monthLabel: '', data: null })}
+                    className="px-6 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold py-2.5 rounded-xl text-xs transition-all"
+                  >
+                    Tutup
+                  </button>
+                </div>
               </div>
             </div>
           )}
@@ -12648,4 +13957,5 @@ function RekapLabaRugiModule({ invoices, buktiPembelian, globalSearch, settings,
     root.render(<App />);
   </script>
 </body>
+
 </html>
