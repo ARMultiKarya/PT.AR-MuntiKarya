@@ -4,18 +4,47 @@
   <script>
     (function() {
       var logs = [];
+      function isNetworkError(str) {
+        if (!str) return false;
+        var s = String(str).toLowerCase();
+        return s.includes('failed to fetch') || 
+               s.includes('networkerror') || 
+               s.includes('load failed') || 
+               s.includes('fetch failed') ||
+               s.includes('network error') ||
+               s.includes('typeerror');
+      }
+
       window.addEventListener('error', function(e) {
-        var msg = '[' + new Date().toLocaleTimeString() + '] ' + e.message + ' at ' + e.filename + ':' + e.lineno + ':' + e.colno;
+        var msgStr = (e && e.message) ? String(e.message) : (e && e.error ? String(e.error) : '');
+        if (isNetworkError(msgStr)) {
+          console.warn('Network error event suppressed from debug overlay:', msgStr);
+          return;
+        }
+        var msg = '[' + new Date().toLocaleTimeString() + '] ' + (e.message || 'Error') + ' at ' + e.filename + ':' + e.lineno + ':' + e.colno;
         if (e.error && e.error.stack) {
           msg += '\nStack: ' + e.error.stack;
         }
         logs.push(msg);
         showConsole();
       });
+
       window.addEventListener('unhandledrejection', function(e) {
-        var msg = '[' + new Date().toLocaleTimeString() + '] Unhandled Rejection: ' + (e.reason ? e.reason.message || e.reason : '');
-        if (e.reason && e.reason.stack) {
-          msg += '\nStack: ' + e.reason.stack;
+        var reason = e ? e.reason : null;
+        var reasonMsg = '';
+        if (reason) {
+          if (typeof reason === 'string') reasonMsg = reason;
+          else if (reason.message) reasonMsg = String(reason.message);
+          else reasonMsg = String(reason);
+        }
+        if (isNetworkError(reasonMsg) || isNetworkError(reason)) {
+          console.warn('Unhandled network rejection suppressed from debug overlay:', reasonMsg);
+          if (e.preventDefault) e.preventDefault();
+          return;
+        }
+        var msg = '[' + new Date().toLocaleTimeString() + '] Unhandled Rejection: ' + (reasonMsg || 'Unknown Error');
+        if (reason && reason.stack) {
+          msg += '\nStack: ' + reason.stack;
         }
         logs.push(msg);
         showConsole();
@@ -153,29 +182,53 @@
   <!-- Custom CSS -->
   <link rel="stylesheet" href="styles.css">
 
-  <!-- React 18 & ReactDOM (Local / Offline) -->
-  <script src="js/react.production.min.js"></script>
-  <script src="js/react-dom.production.min.js"></script>
+  <!-- React 18 & ReactDOM (CDN with Local Fallback) -->
+  <script src="https://cdn.jsdelivr.net/npm/react@18/umd/react.production.min.js" crossorigin></script>
+  <script>window.React || document.write('<script src="js/react.production.min.js"><\/script>')</script>
+  <script src="https://cdn.jsdelivr.net/npm/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  <script>window.ReactDOM || document.write('<script src="js/react-dom.production.min.js"><\/script>')</script>
   
-  <!-- Babel Standalone (Local / Offline) -->
-  <script src="js/babel.min.js"></script>
+  <!-- Babel Standalone (CDN with Local Fallback) -->
+  <script src="https://cdn.jsdelivr.net/npm/@babel/standalone@7/babel.min.js" crossorigin></script>
+  <script>window.Babel || document.write('<script src="js/babel.min.js"><\/script>')</script>
 
-  <!-- Lucide Icons (Local / Offline) -->
-  <script src="js/lucide.min.js"></script>
+  <!-- Lucide Icons (CDN with Local Fallback) -->
+  <script src="https://cdn.jsdelivr.net/npm/lucide@latest/dist/umd/lucide.min.js" crossorigin></script>
+  <script>window.lucide || document.write('<script src="js/lucide.min.js"><\/script>')</script>
 
-  <!-- Chart.js (Local / Offline) -->
-  <script src="js/chart.js"></script>
+  <!-- Chart.js (CDN with Local Fallback) -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js" crossorigin></script>
+  <script>window.Chart || document.write('<script src="js/chart.js"><\/script>')</script>
 
-  <!-- SheetJS (Local / Offline) -->
-  <script src="js/xlsx.full.min.js"></script>
+  <!-- SheetJS (CDN with Local Fallback) -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@latest/dist/xlsx.full.min.js" crossorigin></script>
+  <script>window.XLSX || document.write('<script src="js/xlsx.full.min.js"><\/script>')</script>
 
   <!-- Supabase CDN Client -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" crossorigin></script>
 
   <!-- Custom Babel Runner to Catch & Show Compile Errors -->
   <script>
     (function() {
-      window.addEventListener('DOMContentLoaded', function() {
+      var babelRetries = 0;
+      function runBabelCompilation() {
+        if (typeof Babel === 'undefined') {
+          babelRetries++;
+          if (babelRetries === 10) {
+            console.warn('Emergency loading Babel from CDN...');
+            var s = document.createElement('script');
+            s.src = 'https://cdn.jsdelivr.net/npm/@babel/standalone@7/babel.min.js';
+            s.onload = runBabelCompilation;
+            document.head.appendChild(s);
+            return;
+          }
+          if (babelRetries > 60) {
+            console.error('Babel failed to load after retries.');
+            return;
+          }
+          setTimeout(runBabelCompilation, 100);
+          return;
+        }
         var scripts = document.querySelectorAll('script[type="text/custom-babel"]');
         scripts.forEach(function(script) {
           try {
@@ -208,10 +261,16 @@
               errorDiv.style.whiteSpace = 'pre-wrap';
               document.body.appendChild(errorDiv);
             }
-            errorDiv.textContent = '=== BABEL COMPILATION ERROR ===\n' + err.message + '\n\n' + err.stack + '\n\n' + errorDiv.textContent;
+            errorDiv.textContent = '=== BABEL COMPILATION ERROR ===\n' + err.message + '\n\n' + (err.stack || '') + '\n\n' + errorDiv.textContent;
           }
         });
-      });
+      }
+
+      if (document.readyState === 'loading') {
+        window.addEventListener('DOMContentLoaded', runBabelCompilation);
+      } else {
+        runBabelCompilation();
+      }
     })();
   </script>
 </head>
@@ -245,8 +304,12 @@
     let useFallback = false;
 
     // --- SUPABASE CLOUD DATABASE SETUP ---
-    const DEFAULT_SUPABASE_URL = 'https://rmicglwqmulpbkvjvduw.supabase.co';
-    const DEFAULT_SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJtaWNnbHdxbXVscGJrdmp2ZHV3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ3MjgwMjgsImV4cCI6MjEwMDMwNDAyOH0.Ypkd4CPXI4POYZ7hEi_29USe6eYXO_0vYnkywvNSBs0';
+    const DEFAULT_SUPABASE_URL = '';
+    const DEFAULT_SUPABASE_KEY = '';
+    if (localStorage.getItem('pt_ar_supabase_url') === 'https://rmicglwqmulpbkvjvduw.supabase.co') {
+      localStorage.removeItem('pt_ar_supabase_url');
+      localStorage.removeItem('pt_ar_supabase_key');
+    }
     let isSupabaseDisabled = localStorage.getItem('pt_ar_supabase_disabled') === 'true';
     let supabaseUrl = isSupabaseDisabled ? '' : (localStorage.getItem('pt_ar_supabase_url') || DEFAULT_SUPABASE_URL);
     let supabaseKey = isSupabaseDisabled ? '' : (localStorage.getItem('pt_ar_supabase_key') || DEFAULT_SUPABASE_KEY);
@@ -342,9 +405,116 @@
       });
     }
 
+    function getLocalAllFromStore(storeName) {
+      return initDB().then(db => {
+        if (useFallback || !db) {
+          return fallbackDB[storeName] || [];
+        }
+        return new Promise((resolve) => {
+          try {
+            const transaction = db.transaction(storeName, 'readonly');
+            const store = transaction.objectStore(storeName);
+            const request = store.getAll();
+            request.onsuccess = () => resolve(request.result || []);
+            request.onerror = () => resolve(fallbackDB[storeName] || []);
+          } catch (e) {
+            resolve(fallbackDB[storeName] || []);
+          }
+        });
+      });
+    }
+
+    function getLocalFromStore(storeName, key) {
+      return initDB().then(db => {
+        if (useFallback || !db) {
+          const list = fallbackDB[storeName] || [];
+          return list.find(x => x.id === key);
+        }
+        return new Promise((resolve) => {
+          try {
+            const transaction = db.transaction(storeName, 'readonly');
+            const store = transaction.objectStore(storeName);
+            const request = store.get(key);
+            request.onsuccess = () => resolve(request.result);
+            request.onerror = () => {
+              const list = fallbackDB[storeName] || [];
+              resolve(list.find(x => x.id === key));
+            };
+          } catch (e) {
+            const list = fallbackDB[storeName] || [];
+            resolve(list.find(x => x.id === key));
+          }
+        });
+      });
+    }
+
+    function saveLocalToStore(storeName, data) {
+      return initDB().then(db => {
+        if (useFallback || !db) {
+          const list = fallbackDB[storeName] || [];
+          if (data.id === undefined || data.id === null) {
+            const maxId = list.reduce((max, x) => (typeof x.id === 'number' && x.id > max ? x.id : max), 0);
+            data.id = maxId + 1;
+          }
+          const idx = list.findIndex(x => x.id === data.id);
+          if (idx >= 0) {
+            list[idx] = data;
+          } else {
+            list.push(data);
+          }
+          fallbackDB[storeName] = list;
+          try {
+            localStorage.setItem(`fallback_db_${storeName}`, JSON.stringify(list));
+          } catch(e) {}
+          return data.id;
+        }
+        return new Promise((resolve, reject) => {
+          try {
+            const transaction = db.transaction(storeName, 'readwrite');
+            const store = transaction.objectStore(storeName);
+            const request = store.put(data);
+            request.onsuccess = () => resolve(request.result);
+            request.onerror = () => reject(request.error);
+          } catch (e) {
+            useFallback = true;
+            resolve(saveLocalToStore(storeName, data));
+          }
+        });
+      });
+    }
+
+    function deleteLocalFromStore(storeName, key) {
+      return initDB().then(db => {
+        if (useFallback || !db) {
+          const list = fallbackDB[storeName] || [];
+          const filtered = list.filter(x => x.id !== key);
+          fallbackDB[storeName] = filtered;
+          try {
+            localStorage.setItem(`fallback_db_${storeName}`, JSON.stringify(filtered));
+          } catch(e) {}
+          return;
+        }
+        return new Promise((resolve, reject) => {
+          try {
+            const transaction = db.transaction(storeName, 'readwrite');
+            const store = transaction.objectStore(storeName);
+            const request = store.delete(key);
+            request.onsuccess = () => resolve(request.result);
+            request.onerror = () => reject(request.error);
+          } catch (e) {
+            useFallback = true;
+            resolve(deleteLocalFromStore(storeName, key));
+          }
+        });
+      });
+    }
+
     function getAllFromStore(storeName) {
       if (mysqlApiUrl) {
-        return callMySQL(storeName, 'GET');
+        return callMySQL(storeName, 'GET').catch(err => {
+          console.warn(`MySQL fetch failed for ${storeName}, falling back to local DB:`, err);
+          return getLocalAllFromStore(storeName);
+        });
       }
       const client = supabaseClient;
       if (client) {
@@ -383,25 +553,21 @@
               }
             }
             return data || [];
+          })
+          .catch(err => {
+            console.warn(`Supabase fetch failed for ${storeName}, falling back to local DB:`, err);
+            return getLocalAllFromStore(storeName);
           });
       }
-      return initDB().then(db => {
-        if (useFallback) {
-          return fallbackDB[storeName] || [];
-        }
-        return new Promise((resolve, reject) => {
-          const transaction = db.transaction(storeName, 'readonly');
-          const store = transaction.objectStore(storeName);
-          const request = store.getAll();
-          request.onsuccess = () => resolve(request.result);
-          request.onerror = () => reject(request.error);
-        });
-      });
+      return getLocalAllFromStore(storeName);
     }
 
     function getFromStore(storeName, key) {
       if (mysqlApiUrl) {
-        return callMySQL(storeName, 'GET', null, key);
+        return callMySQL(storeName, 'GET', null, key).catch(err => {
+          console.warn(`MySQL get failed for ${storeName}/${key}, falling back to local DB:`, err);
+          return getLocalFromStore(storeName, key);
+        });
       }
       const client = supabaseClient;
       if (client) {
@@ -434,26 +600,21 @@
               }
             }
             return data;
+          })
+          .catch(err => {
+            console.warn(`Supabase get failed for ${storeName}/${key}, falling back to local DB:`, err);
+            return getLocalFromStore(storeName, key);
           });
       }
-      return initDB().then(db => {
-        if (useFallback) {
-          const list = fallbackDB[storeName] || [];
-          return list.find(x => x.id === key);
-        }
-        return new Promise((resolve, reject) => {
-          const transaction = db.transaction(storeName, 'readonly');
-          const store = transaction.objectStore(storeName);
-          const request = store.get(key);
-          request.onsuccess = () => resolve(request.result);
-          request.onerror = () => reject(request.error);
-        });
-      });
+      return getLocalFromStore(storeName, key);
     }
 
     function saveToStore(storeName, data) {
       if (mysqlApiUrl) {
-        return callMySQL(storeName, 'POST', data).then(res => res.id);
+        return callMySQL(storeName, 'POST', data).then(res => res.id).catch(err => {
+          console.warn(`MySQL save failed for ${storeName}, falling back to local DB:`, err);
+          return saveLocalToStore(storeName, data);
+        });
       }
       const client = supabaseClient;
       if (client) {
@@ -467,88 +628,70 @@
           .upsert(mainData)
           .select();
 
-        return savePromise.then(async ({ data: savedRows, error }) => {
-          if (error) {
-            console.error(`Supabase error saving ${storeName}:`, error);
-            throw error;
-          }
-          const savedRow = (savedRows && savedRows.length > 0) ? savedRows[0] : null;
-          const finalId = savedRow ? savedRow.id : originalId;
-          if (finalId === undefined || finalId === null || finalId === '') {
-            throw new Error(`Gagal mendapatkan ID untuk data yang disimpan di ${storeName}`);
-          }
-          if (storeName === 'po' && items) {
-            await client.from('po_items').delete().eq('poId', finalId);
-            const itemsToInsert = items.map(it => ({
-              poId: finalId,
-              barangId: Number(it.barangId),
-              qty: Number(it.qty),
-              price: Number(it.price),
-              total: Number(it.total)
-            }));
-            if (itemsToInsert.length > 0) {
-              await client.from('po_items').insert(itemsToInsert);
+        return savePromise
+          .then(async ({ data: savedRows, error }) => {
+            if (error) {
+              console.error(`Supabase error saving ${storeName}:`, error);
+              throw error;
             }
-          } else if (storeName === 'bukti_pembelian' && items) {
-            await client.from('bukti_pembelian_items').delete().eq('buktiPembelianId', finalId);
-            const itemsToInsert = items.map(it => ({
-              buktiPembelianId: finalId,
-              barangId: Number(it.barangId),
-              qty: Number(it.qty),
-              unitCost: Number(it.unitCost)
-            }));
-            if (itemsToInsert.length > 0) {
-              await client.from('bukti_pembelian_items').insert(itemsToInsert);
+            const savedRow = (savedRows && savedRows.length > 0) ? savedRows[0] : null;
+            const finalId = savedRow ? savedRow.id : originalId;
+            if (finalId === undefined || finalId === null || finalId === '') {
+              throw new Error(`Gagal mendapatkan ID untuk data yang disimpan di ${storeName}`);
             }
-          } else if (storeName === 'invoice_jual' && items) {
-            await client.from('invoice_jual_items').delete().eq('invoiceJualId', finalId);
-            const itemsToInsert = items.map(it => ({
-              invoiceJualId: finalId,
-              barangId: Number(it.barangId),
-              qty: Number(it.qty),
-              price: Number(it.price),
-              total: Number(it.total),
-              hpp: Number(it.hpp || 0)
-            }));
-            if (itemsToInsert.length > 0) {
-              await client.from('invoice_jual_items').insert(itemsToInsert);
+            if (storeName === 'po' && items) {
+              await client.from('po_items').delete().eq('poId', finalId);
+              const itemsToInsert = items.map(it => ({
+                poId: finalId,
+                barangId: Number(it.barangId),
+                qty: Number(it.qty),
+                price: Number(it.price),
+                total: Number(it.total)
+              }));
+              if (itemsToInsert.length > 0) {
+                await client.from('po_items').insert(itemsToInsert);
+              }
+            } else if (storeName === 'bukti_pembelian' && items) {
+              await client.from('bukti_pembelian_items').delete().eq('buktiPembelianId', finalId);
+              const itemsToInsert = items.map(it => ({
+                buktiPembelianId: finalId,
+                barangId: Number(it.barangId),
+                qty: Number(it.qty),
+                unitCost: Number(it.unitCost)
+              }));
+              if (itemsToInsert.length > 0) {
+                await client.from('bukti_pembelian_items').insert(itemsToInsert);
+              }
+            } else if (storeName === 'invoice_jual' && items) {
+              await client.from('invoice_jual_items').delete().eq('invoiceJualId', finalId);
+              const itemsToInsert = items.map(it => ({
+                invoiceJualId: finalId,
+                barangId: Number(it.barangId),
+                qty: Number(it.qty),
+                price: Number(it.price),
+                total: Number(it.total),
+                hpp: Number(it.hpp || 0)
+              }));
+              if (itemsToInsert.length > 0) {
+                await client.from('invoice_jual_items').insert(itemsToInsert);
+              }
             }
-          }
-          return finalId;
-        });
+            return finalId;
+          })
+          .catch(err => {
+            console.warn(`Supabase save failed for ${storeName}, falling back to local DB:`, err);
+            return saveLocalToStore(storeName, data);
+          });
       }
-      return initDB().then(db => {
-        if (useFallback) {
-          const list = fallbackDB[storeName] || [];
-          if (data.id === undefined) {
-            const maxId = list.reduce((max, x) => (typeof x.id === 'number' && x.id > max ? x.id : max), 0);
-            data.id = maxId + 1;
-          }
-          const idx = list.findIndex(x => x.id === data.id);
-          if (idx >= 0) {
-            list[idx] = data;
-          } else {
-            list.push(data);
-          }
-          fallbackDB[storeName] = list;
-          try {
-            localStorage.setItem(`fallback_db_${storeName}`, JSON.stringify(list));
-          } catch(e) {}
-          return data.id;
-        }
-        return new Promise((resolve, reject) => {
-          const transaction = db.transaction(storeName, 'readwrite');
-          const store = transaction.objectStore(storeName);
-          const request = store.put(data);
-          request.onsuccess = () => resolve(request.result);
-          request.onerror = () => reject(request.error);
-        });
-      });
+      return saveLocalToStore(storeName, data);
     }
 
     function deleteFromStore(storeName, key) {
       if (mysqlApiUrl) {
-        return callMySQL(storeName, 'DELETE', null, key);
+        return callMySQL(storeName, 'DELETE', null, key).catch(err => {
+          console.warn(`MySQL delete failed for ${storeName}/${key}, falling back to local DB:`, err);
+          return deleteLocalFromStore(storeName, key);
+        });
       }
       if (supabaseClient) {
         return supabaseClient
@@ -560,26 +703,13 @@
               console.error(`Supabase error deleting ${storeName}/${key}:`, error);
               throw error;
             }
+          })
+          .catch(err => {
+            console.warn(`Supabase delete failed for ${storeName}/${key}, falling back to local DB:`, err);
+            return deleteLocalFromStore(storeName, key);
           });
       }
-      return initDB().then(db => {
-        if (useFallback) {
-          const list = fallbackDB[storeName] || [];
-          const filtered = list.filter(x => x.id !== key);
-          fallbackDB[storeName] = filtered;
-          try {
-            localStorage.setItem(`fallback_db_${storeName}`, JSON.stringify(filtered));
-          } catch(e) {}
-          return;
-        }
-        return new Promise((resolve, reject) => {
-          const transaction = db.transaction(storeName, 'readwrite');
-          const store = transaction.objectStore(storeName);
-          const request = store.delete(key);
-          request.onsuccess = () => resolve(request.result);
-          request.onerror = () => reject(request.error);
-        });
-      });
+      return deleteLocalFromStore(storeName, key);
     }
 
     // --- ATOMIC STRENGTH TRANSACTIONS ---
@@ -1071,7 +1201,7 @@
     ];
 
     const SEED_PO = [
-      { id: 1, poNumber: 'PO-202607-0001', supplierId: 0, customerId: 1, poDate: '2026-07-10', deliveryRequestDate: '2026-07-22', status: 'Selesai', createdByDetail: 'SPPG Ngawen Muntilan', items: [{ barangId: 1, qty: 50, price: 65000, total: 3250000 }, { barangId: 4, qty: 100, price: 47000, total: 4700000 }], totalAmount: 7950000 }
+      { id: 1, poNumber: 'PO-202607-0001', supplierId: 1, customerId: 1, poDate: '2026-07-10', deliveryRequestDate: '2026-07-22', status: 'Selesai', createdByDetail: 'SPPG Ngawen Muntilan', items: [{ barangId: 1, qty: 50, price: 65000, total: 3250000 }, { barangId: 4, qty: 100, price: 47000, total: 4700000 }], totalAmount: 7950000 }
     ];
 
     const SEED_BUKTI = [
@@ -1876,11 +2006,11 @@
           { id: 'supplier', name: 'Master Supplier', icon: 'truck', roles: ['admin', 'finance'] },
           { id: 'barang', name: 'Master Barang', icon: 'package', roles: ['admin', 'finance'] },
           { id: 'bukti_pembelian', name: 'Bukti Pembelian (Supplier)', icon: 'receipt', roles: ['admin', 'finance'] },
-          { id: 'price_list', name: 'Price List', icon: 'tags', roles: ['admin', 'finance', 'sppg', 'mitra'] },
+          { id: 'price_list', name: (role === 'sppg' || role === 'mitra') ? 'Katalog Harga & Stok' : 'Price List', icon: 'tags', roles: ['admin', 'finance', 'sppg', 'mitra'] },
           { id: 'kalkulator_po', name: 'Kalkulator Budget PO', icon: 'calculator', roles: ['admin', 'sppg', 'mitra'] },
           { id: 'customer', name: 'Mitra / Customer', icon: 'users', roles: ['admin', 'finance'] },
           { id: 'po', name: 'Purchase Order (PO)', icon: 'file-text', roles: ['admin', 'finance', 'sppg', 'mitra'] },
-          { id: 'invoice_jual', name: (role === 'sppg' || role === 'mitra') ? 'Bukti Penerimaan Barang' : 'Invoice Penjualan', icon: (role === 'sppg' || role === 'mitra') ? 'clipboard-check' : 'file-invoice-dollar', roles: ['admin', 'finance', 'sppg', 'mitra'] },
+          { id: 'invoice_jual', name: (role === 'sppg' || role === 'mitra') ? 'Penerimaan Barang & Invoice' : 'Invoice Penjualan', icon: (role === 'sppg' || role === 'mitra') ? 'clipboard-check' : 'file-invoice-dollar', roles: ['admin', 'finance', 'sppg', 'mitra'] },
           { id: 'rekap_laba_rugi', name: 'Laba Rugi (Profit/Loss)', icon: 'trending-up', roles: ['admin', 'finance'] },
           { id: 'komunikasi', name: 'Komunikasi (Pesan)', icon: 'messages-square', roles: ['admin', 'finance', 'sppg', 'mitra'] },
           { id: 'users', name: 'Manajemen Akun', icon: 'user-cog', roles: ['admin'] },
@@ -2130,39 +2260,54 @@
                   showToast={showToast}
                   priceAlerts={priceAlerts}
                   currentUser={currentUser}
+                  priceLists={priceLists}
+                  onNavigate={(mod) => setCurrentModule(mod)}
                 />
               )}
               {currentModule === 'supplier' && (
                 <SupplierModule 
                   suppliers={suppliers} 
+                  barangList={barangList}
+                  poList={poList}
+                  buktiPembelian={buktiPembelian}
+                  priceLists={priceLists}
                   globalSearch={globalSearch} 
                   reloadData={reloadData} 
                   logActivity={logActivity}
                   showToast={showToast}
                   currentUser={currentUser}
+                  onNavigate={(mod) => setCurrentModule(mod)}
                 />
               )}
               {currentModule === 'barang' && (
                 <BarangModule 
                   barangList={barangList} 
                   suppliers={suppliers} 
+                  poList={poList}
+                  buktiPembelian={buktiPembelian}
+                  priceLists={priceLists}
                   globalSearch={globalSearch} 
                   reloadData={reloadData} 
                   logActivity={logActivity}
                   showToast={showToast}
                   currentUser={currentUser}
+                  onNavigate={(mod) => setCurrentModule(mod)}
                 />
               )}
               {currentModule === 'price_list' && (
                 <PriceListModule 
                   priceLists={priceLists} 
                   barangList={barangList} 
+                  suppliers={suppliers}
+                  poList={poList}
+                  buktiPembelian={buktiPembelian}
                   globalSearch={globalSearch} 
                   reloadData={reloadData} 
                   logActivity={logActivity}
                   showToast={showToast}
                   priceAlerts={priceAlerts}
                   currentUser={currentUser}
+                  onNavigate={(mod) => setCurrentModule(mod)}
                 />
               )}
               {currentModule === 'po' && (
@@ -2173,11 +2318,13 @@
                   priceLists={priceLists}
                   customers={customers}
                   invoices={invoices}
+                  buktiPembelian={buktiPembelian}
                   globalSearch={globalSearch} 
                   reloadData={reloadData} 
                   logActivity={logActivity}
                   showToast={showToast}
                   currentUser={currentUser}
+                  onNavigate={(mod) => setCurrentModule(mod)}
                 />
               )}
               {currentModule === 'bukti_pembelian' && (
@@ -2187,11 +2334,13 @@
                   barangList={barangList} 
                   suppliers={suppliers}
                   customers={customers}
+                  priceLists={priceLists}
                   globalSearch={globalSearch} 
                   reloadData={reloadData} 
                   logActivity={logActivity}
                   showToast={showToast}
                   currentUser={currentUser}
+                  onNavigate={(mod) => setCurrentModule(mod)}
                 />
               )}
               {currentModule === 'customer' && (
@@ -2213,12 +2362,14 @@
                     priceLists={priceLists}
                     customers={customers} 
                     invoices={invoices}
+                    buktiPembelian={buktiPembelian}
                     globalSearch={globalSearch} 
                     reloadData={reloadData} 
                     logActivity={logActivity}
                     showToast={showToast}
                     currentUser={currentUser}
                     onlyShowShipments={true}
+                    onNavigate={(mod) => setCurrentModule(mod)}
                   />
                 ) : (
                   <InvoiceJualModule 
@@ -2304,9 +2455,238 @@
     }
 
     // ==========================================
+    // WORKFLOW PROGRESS CARD COMPONENT
+    // ==========================================
+    function WorkflowProgressCard({ suppliers = [], barangList = [], poList = [], buktiPembelian = [], priceLists = [], onNavigate }) {
+      const step1Done = suppliers.length > 0;
+      const step2Done = step1Done && barangList.length > 0;
+      const step3Done = step2Done && (poList.length > 0 || buktiPembelian.length > 0);
+      const step4Done = step3Done && priceLists.length > 0;
+
+      const currentStep = !step1Done ? 1 : !step2Done ? 2 : !step3Done ? 3 : 4;
+
+      React.useEffect(() => {
+        if (window.lucide) {
+          setTimeout(() => { window.lucide.createIcons(); }, 50);
+        }
+      }, [suppliers.length, barangList.length, poList.length, buktiPembelian.length, priceLists.length]);
+
+      const handleStepClick = (stepNum, targetModule) => {
+        if (stepNum === 1) {
+          if (onNavigate) onNavigate('supplier');
+        } else if (stepNum === 2) {
+          if (!step1Done) {
+            alert("⚠️ PERHATIAN ALUR OPERASIONAL:\n\nAnda wajib mengisikan Master Supplier terlebih dahulu sebelum mengisikan Master Barang.\n\nSistem akan mengarahkan Anda ke menu Master Supplier.");
+            if (onNavigate) onNavigate('supplier');
+          } else {
+            if (onNavigate) onNavigate('barang');
+          }
+        } else if (stepNum === 3) {
+          if (!step1Done) {
+            alert("⚠️ PERHATIAN ALUR OPERASIONAL:\n\nAnda wajib mengisikan Master Supplier terlebih dahulu sebelum mencatat Pembelian.\n\nSistem akan mengarahkan Anda ke menu Master Supplier.");
+            if (onNavigate) onNavigate('supplier');
+          } else if (!step2Done) {
+            alert("⚠️ PERHATIAN ALUR OPERASIONAL:\n\nAnda wajib mengisikan Master Barang terlebih dahulu sebelum mencatat Pembelian.\n\nSistem akan mengarahkan Anda ke menu Master Barang.");
+            if (onNavigate) onNavigate('barang');
+          } else {
+            if (onNavigate) onNavigate('po');
+          }
+        } else if (stepNum === 4) {
+          if (!step1Done) {
+            alert("⚠️ PERHATIAN ALUR OPERASIONAL:\n\nAnda wajib mengisikan Master Supplier terlebih dahulu.");
+            if (onNavigate) onNavigate('supplier');
+          } else if (!step2Done) {
+            alert("⚠️ PERHATIAN ALUR OPERASIONAL:\n\nAnda wajib mengisikan Master Barang terlebih dahulu.");
+            if (onNavigate) onNavigate('barang');
+          } else if (!step3Done) {
+            alert("⚠️ PERHATIAN ALUR OPERASIONAL:\n\nAnda wajib mencatat Pembelian (PO / Bukti Pembelian) terlebih dahulu sebelum menetapkan harga barang.");
+            if (onNavigate) onNavigate('po');
+          } else {
+            if (onNavigate) onNavigate('price_list');
+          }
+        }
+      };
+
+      return (
+        <div className="bg-gradient-to-r from-slate-900 via-sky-950 to-slate-900 text-white p-6 rounded-3xl shadow-xl border border-sky-800/40 relative overflow-hidden mb-6 no-print">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-5">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="bg-sky-500/20 text-sky-300 border border-sky-400/30 px-3 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider">
+                  Alur Berurutan Wajib Sistem
+                </span>
+                <span className="text-[10px] text-amber-400 font-bold bg-amber-950/40 px-2 py-0.5 rounded-full border border-amber-500/30">
+                  SOP PT AR Multi Karya
+                </span>
+              </div>
+              <h3 className="text-base font-extrabold text-white mt-1 flex items-center gap-2">
+                <i data-lucide="git-commit" className="w-5 h-5 text-sky-400"></i>
+                Tahapan Alur Kerja Operasional (4 Langkah Wajib)
+              </h3>
+              <p className="text-xs text-sky-200/80 mt-0.5">
+                Pengisian data harus sesuai urutan sah: <strong>1. Master Supplier &rarr; 2. Master Barang &rarr; 3. Mencatat Pembelian &rarr; 4. Menetapkan Harga</strong>.
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 relative z-10">
+            {/* Step 1 */}
+            <div 
+              onClick={() => handleStepClick(1, 'supplier')}
+              className={`p-4 rounded-2xl border transition-all cursor-pointer relative group ${
+                step1Done 
+                  ? 'bg-emerald-950/40 border-emerald-500/40 hover:border-emerald-400' 
+                  : currentStep === 1
+                    ? 'bg-amber-950/60 border-amber-400 shadow-lg shadow-amber-950/50 scale-[1.02] ring-2 ring-amber-400/30 animate-pulse'
+                    : 'bg-slate-800/40 border-slate-700 opacity-60'
+              }`}
+            >
+              <div className="flex items-center justify-between mb-2">
+                <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full ${
+                  step1Done ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                }`}>
+                  Langkah 1
+                </span>
+                {step1Done ? (
+                  <span className="w-6 h-6 rounded-full bg-emerald-500 text-slate-950 flex items-center justify-center font-bold text-xs">✓</span>
+                ) : (
+                  <span className="w-6 h-6 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/40 flex items-center justify-center text-xs font-bold">1</span>
+                )}
+              </div>
+              <h4 className="font-extrabold text-sm text-white">1. Master Supplier</h4>
+              <p className="text-[11px] text-slate-300 mt-1 leading-snug">
+                {step1Done ? `Terisi (${suppliers.length} Supplier)` : 'Belum Diisi (Wajib Pertama)'}
+              </p>
+              <div className="mt-3 pt-2 border-t border-white/10 flex items-center justify-between text-[10px] font-bold">
+                <span className={step1Done ? 'text-emerald-400' : 'text-amber-300'}>
+                  {step1Done ? 'Langkah Selesai ✓' : '👉 Buka Master Supplier'}
+                </span>
+                <i data-lucide="chevron-right" className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform"></i>
+              </div>
+            </div>
+
+            {/* Step 2 */}
+            <div 
+              onClick={() => handleStepClick(2, 'barang')}
+              className={`p-4 rounded-2xl border transition-all cursor-pointer relative group ${
+                step2Done 
+                  ? 'bg-emerald-950/40 border-emerald-500/40 hover:border-emerald-400' 
+                  : currentStep === 2
+                    ? 'bg-amber-950/60 border-amber-400 shadow-lg shadow-amber-950/50 scale-[1.02] ring-2 ring-amber-400/30 animate-pulse'
+                    : 'bg-slate-800/40 border-slate-700 opacity-60'
+              }`}
+            >
+              <div className="flex items-center justify-between mb-2">
+                <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full ${
+                  step2Done ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 
+                  step1Done ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' : 'bg-slate-700 text-slate-400'
+                }`}>
+                  Langkah 2
+                </span>
+                {step2Done ? (
+                  <span className="w-6 h-6 rounded-full bg-emerald-500 text-slate-950 flex items-center justify-center font-bold text-xs">✓</span>
+                ) : !step1Done ? (
+                  <span className="w-6 h-6 rounded-full bg-slate-800 text-slate-500 border border-slate-700 flex items-center justify-center text-xs">🔒</span>
+                ) : (
+                  <span className="w-6 h-6 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/40 flex items-center justify-center text-xs font-bold">2</span>
+                )}
+              </div>
+              <h4 className="font-extrabold text-sm text-white">2. Master Barang</h4>
+              <p className="text-[11px] text-slate-300 mt-1 leading-snug">
+                {step2Done ? `Terisi (${barangList.length} Barang)` : step1Done ? 'Siap Diisi' : 'Terkunci (Isi Supplier Dulu)'}
+              </p>
+              <div className="mt-3 pt-2 border-t border-white/10 flex items-center justify-between text-[10px] font-bold">
+                <span className={step2Done ? 'text-emerald-400' : step1Done ? 'text-amber-300' : 'text-slate-400'}>
+                  {step2Done ? 'Langkah Selesai ✓' : step1Done ? '👉 Buka Master Barang' : '🔒 Perlu Step 1'}
+                </span>
+                <i data-lucide="chevron-right" className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform"></i>
+              </div>
+            </div>
+
+            {/* Step 3 */}
+            <div 
+              onClick={() => handleStepClick(3, 'po')}
+              className={`p-4 rounded-2xl border transition-all cursor-pointer relative group ${
+                step3Done 
+                  ? 'bg-emerald-950/40 border-emerald-500/40 hover:border-emerald-400' 
+                  : currentStep === 3
+                    ? 'bg-amber-950/60 border-amber-400 shadow-lg shadow-amber-950/50 scale-[1.02] ring-2 ring-amber-400/30 animate-pulse'
+                    : 'bg-slate-800/40 border-slate-700 opacity-60'
+              }`}
+            >
+              <div className="flex items-center justify-between mb-2">
+                <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full ${
+                  step3Done ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 
+                  step2Done ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' : 'bg-slate-700 text-slate-400'
+                }`}>
+                  Langkah 3
+                </span>
+                {step3Done ? (
+                  <span className="w-6 h-6 rounded-full bg-emerald-500 text-slate-950 flex items-center justify-center font-bold text-xs">✓</span>
+                ) : !step2Done ? (
+                  <span className="w-6 h-6 rounded-full bg-slate-800 text-slate-500 border border-slate-700 flex items-center justify-center text-xs">🔒</span>
+                ) : (
+                  <span className="w-6 h-6 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/40 flex items-center justify-center text-xs font-bold">3</span>
+                )}
+              </div>
+              <h4 className="font-extrabold text-sm text-white">3. Mencatat Pembelian</h4>
+              <p className="text-[11px] text-slate-300 mt-1 leading-snug">
+                {step3Done ? `Terisi (${poList.length} PO / ${buktiPembelian.length} Bukti)` : step2Done ? 'Siap Mencatat Pembelian' : 'Terkunci (Isi Barang Dulu)'}
+              </p>
+              <div className="mt-3 pt-2 border-t border-white/10 flex items-center justify-between text-[10px] font-bold">
+                <span className={step3Done ? 'text-emerald-400' : step2Done ? 'text-amber-300' : 'text-slate-400'}>
+                  {step3Done ? 'Langkah Selesai ✓' : step2Done ? '👉 Catat Pembelian' : '🔒 Perlu Step 2'}
+                </span>
+                <i data-lucide="chevron-right" className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform"></i>
+              </div>
+            </div>
+
+            {/* Step 4 */}
+            <div 
+              onClick={() => handleStepClick(4, 'price_list')}
+              className={`p-4 rounded-2xl border transition-all cursor-pointer relative group ${
+                step4Done 
+                  ? 'bg-emerald-950/40 border-emerald-500/40 hover:border-emerald-400' 
+                  : currentStep === 4
+                    ? 'bg-amber-950/60 border-amber-400 shadow-lg shadow-amber-950/50 scale-[1.02] ring-2 ring-amber-400/30 animate-pulse'
+                    : 'bg-slate-800/40 border-slate-700 opacity-60'
+              }`}
+            >
+              <div className="flex items-center justify-between mb-2">
+                <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full ${
+                  step4Done ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 
+                  step3Done ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' : 'bg-slate-700 text-slate-400'
+                }`}>
+                  Langkah 4
+                </span>
+                {step4Done ? (
+                  <span className="w-6 h-6 rounded-full bg-emerald-500 text-slate-950 flex items-center justify-center font-bold text-xs">✓</span>
+                ) : !step3Done ? (
+                  <span className="w-6 h-6 rounded-full bg-slate-800 text-slate-500 border border-slate-700 flex items-center justify-center text-xs">🔒</span>
+                ) : (
+                  <span className="w-6 h-6 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/40 flex items-center justify-center text-xs font-bold">4</span>
+                )}
+              </div>
+              <h4 className="font-extrabold text-sm text-white">4. Menetapkan Harga</h4>
+              <p className="text-[11px] text-slate-300 mt-1 leading-snug">
+                {step4Done ? `Terisi (${priceLists.length} Price List)` : step3Done ? 'Siap Menetapkan Harga' : 'Terkunci (Catat Pembelian Dulu)'}
+              </p>
+              <div className="mt-3 pt-2 border-t border-white/10 flex items-center justify-between text-[10px] font-bold">
+                <span className={step4Done ? 'text-emerald-400' : step3Done ? 'text-amber-300' : 'text-slate-400'}>
+                  {step4Done ? 'Langkah Selesai ✓' : step3Done ? '👉 Menetapkan Harga' : '🔒 Perlu Step 3'}
+                </span>
+                <i data-lucide="chevron-right" className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform"></i>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // ==========================================
     // 3. DASHBOARD VIEW MODULE
     // ==========================================
-    function DashboardView({ suppliers, barangList, customers, poList, buktiPembelian, invoices, logs, showToast, priceAlerts, currentUser }) {
+    function DashboardView({ suppliers, barangList, customers, poList, buktiPembelian, invoices, logs, showToast, priceAlerts, currentUser, priceLists = [], onNavigate }) {
       
       const isCustomerOrSppg = currentUser?.role === 'sppg' || currentUser?.role === 'mitra';
 
@@ -2480,6 +2860,15 @@
 
       return (
         <div className="space-y-8 animate-fade-in">
+          <WorkflowProgressCard 
+            suppliers={suppliers} 
+            barangList={barangList} 
+            poList={poList} 
+            buktiPembelian={buktiPembelian} 
+            priceLists={priceLists} 
+            onNavigate={onNavigate} 
+          />
+
           {priceAlerts && priceAlerts.length > 0 && (
             <div className="p-4 bg-amber-50 dark:bg-amber-955/20 border border-amber-200 dark:border-amber-900/40 text-amber-850 dark:text-amber-300 rounded-2xl text-xs font-semibold flex items-start gap-3 no-print">
               <i data-lucide="bell" className="w-4 h-4 text-amber-550 flex-shrink-0 mt-0.5 animate-bounce"></i>
@@ -2600,7 +2989,7 @@
     // ==========================================
     // 4. MASTER SUPPLIER VIEW MODULE
     // ==========================================
-    function SupplierModule({ suppliers, globalSearch, reloadData, logActivity, showToast, currentUser }) {
+    function SupplierModule({ suppliers, globalSearch, reloadData, logActivity, showToast, currentUser, onNavigate, barangList = [], poList = [], buktiPembelian = [], priceLists = [] }) {
       const isReadOnly = currentUser?.role === 'mitra';
       const [modalOpen, setModalOpen] = React.useState(null); // 'add', 'edit'
       const [editSupplier, setEditSupplier] = React.useState(null);
@@ -2651,14 +3040,14 @@
           setEditSupplier(sup);
           setName(sup.name);
           setCode(sup.code);
-          setPhone(sup.phone);
-          setEmail(sup.email);
-          setAddress(sup.address);
+          setPhone(sup.phone || '');
+          setEmail(sup.email || '');
+          setAddress(sup.address || '');
           setModalOpen('edit');
         } else {
           setEditSupplier(null);
           setName('');
-          const newCode = 'SPL-' + String(suppliers.length + 1).padStart(3, '0');
+          const newCode = 'SUP-' + String(suppliers.length + 1).padStart(3, '0');
           setCode(newCode);
           setPhone('');
           setEmail('');
@@ -2680,8 +3069,8 @@
         if (modalOpen === 'edit') {
           data.id = editSupplier.id;
           await saveToStore('suppliers', data);
-          await logActivity('Ubah Supplier', `Supplier ${name} (${code}) diperbarui.`);
-          showToast(`Supplier ${name} berhasil diperbarui.`);
+          await logActivity('Ubah Supplier', `Supplier ${name} (${code}) diupdate.`);
+          showToast(`Supplier ${name} berhasil disimpan.`);
         } else {
           await saveToStore('suppliers', data);
           await logActivity('Tambah Supplier', `Supplier baru ${name} (${code}) ditambahkan.`);
@@ -2791,6 +3180,14 @@
 
       return (
         <div className="space-y-6 animate-fade-in">
+          <WorkflowProgressCard 
+            suppliers={suppliers} 
+            barangList={barangList} 
+            poList={poList} 
+            buktiPembelian={buktiPembelian} 
+            priceLists={priceLists} 
+            onNavigate={onNavigate} 
+          />
           <div className="flex justify-between items-center">
             <div>
               <h3 className="font-bold text-xs uppercase text-slate-400 tracking-wider">Manajemen Supplier (Vendor)</h3>
@@ -2975,7 +3372,7 @@
     // ==========================================
     // 5. MASTER BARANG VIEW MODULE
     // ==========================================
-    function BarangModule({ barangList, suppliers, globalSearch, reloadData, logActivity, showToast, currentUser }) {
+    function BarangModule({ barangList, suppliers, globalSearch, reloadData, logActivity, showToast, currentUser, onNavigate, poList = [], buktiPembelian = [], priceLists = [] }) {
       const isReadOnly = currentUser?.role === 'mitra';
       const [modalOpen, setModalOpen] = React.useState(null); // 'add', 'edit'
       const [editBarang, setEditBarang] = React.useState(null);
@@ -3024,6 +3421,12 @@
       };
 
       const openModal = (mode, brg = null) => {
+        if (mode === 'add' && suppliers.length === 0) {
+          showToast("Perhatian Alur: Anda wajib mengisikan Master Supplier terlebih dahulu sebelum mengisikan Master Barang!", "error");
+          alert("⚠️ ALUR KERJA TERHALANG\n\nAnda wajib mengisikan Master Supplier terlebih dahulu sebelum mengisikan Master Barang.\n\nSistem akan mengarahkan Anda ke menu Master Supplier.");
+          if (onNavigate) onNavigate('supplier');
+          return;
+        }
         if (mode === 'edit' && brg) {
           setEditBarang(brg);
           setName(brg.name);
@@ -3091,6 +3494,13 @@
 
       // Import Excel using SheetJS
       const handleImportExcel = (e) => {
+        if (suppliers.length === 0) {
+          e.target.value = '';
+          showToast("Perhatian Alur: Anda wajib mengisikan Master Supplier terlebih dahulu sebelum mengimpor Master Barang!", "error");
+          alert("⚠️ ALUR KERJA TERHALANG\n\nAnda wajib mengisikan Master Supplier terlebih dahulu sebelum mengimpor Master Barang.");
+          if (onNavigate) onNavigate('supplier');
+          return;
+        }
         const file = e.target.files[0];
         if (!file) return;
 
@@ -3191,6 +3601,36 @@
 
       return (
         <div className="space-y-6 animate-fade-in">
+          <WorkflowProgressCard 
+            suppliers={suppliers} 
+            barangList={barangList} 
+            poList={poList} 
+            buktiPembelian={buktiPembelian} 
+            priceLists={priceLists} 
+            onNavigate={onNavigate} 
+          />
+
+          {suppliers.length === 0 && (
+            <div className="p-4 bg-amber-50 dark:bg-amber-955/40 border-2 border-amber-300 dark:border-amber-700/60 rounded-2xl flex items-center justify-between text-xs font-semibold text-amber-900 dark:text-amber-200 shadow-md">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-amber-500 text-white flex items-center justify-center font-extrabold text-lg flex-shrink-0 shadow-sm">
+                  ⚠️
+                </div>
+                <div>
+                  <span className="font-extrabold text-amber-950 dark:text-amber-100 block text-sm">Alur Kerja Belum Lengkap (Tahap 1 Terpending)</span>
+                  <span>Sesuai alur operasional, Anda <strong>wajib mengisi Master Supplier terlebih dahulu</strong> sebelum dapat mengisikan Master Barang.</span>
+                </div>
+              </div>
+              <button 
+                onClick={() => onNavigate && onNavigate('supplier')}
+                className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl font-bold shadow-md hover:shadow-lg transition-all flex items-center gap-2 flex-shrink-0 ml-4"
+              >
+                <i data-lucide="truck" className="w-4 h-4"></i>
+                Isi Master Supplier Sekarang
+              </button>
+            </div>
+          )}
+
           <div className="flex justify-between items-center">
             <div>
               <h3 className="font-bold text-xs uppercase text-slate-400 tracking-wider">Manajemen Bahan Baku & Barang</h3>
@@ -3404,7 +3844,7 @@
     // ==========================================
     // 6. PRICE LIST VIEW MODULE
     // ==========================================
-    function PriceListModule({ priceLists, barangList, globalSearch, reloadData, logActivity, showToast, priceAlerts, currentUser }) {
+    function PriceListModule({ priceLists, barangList, globalSearch, reloadData, logActivity, showToast, priceAlerts, currentUser, suppliers = [], poList = [], buktiPembelian = [], onNavigate }) {
       const isReadOnly = currentUser?.role !== 'admin' && currentUser?.role !== 'finance';
       const [modalOpen, setModalOpen] = React.useState(false);
       
@@ -3593,6 +4033,21 @@
 
       // Import Excel using SheetJS
       const handleImportExcel = (e) => {
+        if (suppliers.length === 0 || barangList.length === 0 || (poList.length === 0 && buktiPembelian.length === 0)) {
+          e.target.value = '';
+          if (suppliers.length === 0) {
+            alert("⚠️ ALUR KERJA TERHALANG\n\nAnda wajib mengisikan Master Supplier terlebih dahulu.");
+            if (onNavigate) onNavigate('supplier');
+          } else if (barangList.length === 0) {
+            alert("⚠️ ALUR KERJA TERHALANG\n\nAnda wajib mengisikan Master Barang terlebih dahulu.");
+            if (onNavigate) onNavigate('barang');
+          } else {
+            alert("⚠️ ALUR KERJA TERHALANG\n\nAnda wajib mencatat Pembelian (PO / Bukti Pembelian) terlebih dahulu sebelum menetapkan harga.");
+            if (onNavigate) onNavigate('po');
+          }
+          return;
+        }
+
         const file = e.target.files[0];
         if (!file) return;
 
@@ -3675,10 +4130,25 @@
                 continue;
               }
 
-              const matchedBarang = barangList.find(b => b.name.toLowerCase() === rBarangName.toLowerCase());
+              const matchedBarang = barangList.find(b => 
+                b.name.toLowerCase() === rBarangName.toLowerCase() ||
+                b.name.toLowerCase().includes(rBarangName.toLowerCase()) ||
+                b.code.toLowerCase() === rBarangName.toLowerCase()
+              );
+              
               if (!matchedBarang) {
-                skippedNotFoundNames.push(rBarangName);
+                if (!skippedNotFoundNames.includes(rBarangName)) {
+                  skippedNotFoundNames.push(rBarangName);
+                }
                 continue;
+              }
+
+              // Normalisasi format tanggal jika mm/dd/yyyy
+              if (rDate.includes('/')) {
+                const parts = rDate.split('/');
+                if (parts.length === 3) {
+                  rDate = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+                }
               }
 
               const newPriceList = {
@@ -3763,6 +4233,63 @@
 
       return (
         <div className="space-y-6 animate-fade-in text-xs font-semibold">
+          <WorkflowProgressCard 
+            suppliers={suppliers} 
+            barangList={barangList} 
+            poList={poList} 
+            buktiPembelian={buktiPembelian} 
+            priceLists={priceLists} 
+            onNavigate={onNavigate} 
+          />
+
+          {suppliers.length === 0 && (
+            <div className="p-4 bg-amber-50 dark:bg-amber-955/40 border-2 border-amber-300 dark:border-amber-700/60 rounded-2xl flex items-center justify-between text-xs font-semibold text-amber-900 dark:text-amber-200 shadow-md">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-amber-500 text-white flex items-center justify-center font-extrabold text-lg flex-shrink-0 shadow-sm">⚠️</div>
+                <div>
+                  <span className="font-extrabold text-amber-950 dark:text-amber-100 block text-sm">Alur Kerja Terhambat (Belum Ada Master Supplier)</span>
+                  <span>Anda <strong>wajib mengisi Master Supplier terlebih dahulu</strong> sebelum menetapkan harga.</span>
+                </div>
+              </div>
+              <button onClick={() => onNavigate && onNavigate('supplier')} className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl font-bold shadow-md hover:shadow-lg transition-all flex items-center gap-2 flex-shrink-0 ml-4">
+                <i data-lucide="truck" className="w-4 h-4"></i>
+                Isi Master Supplier Sekarang
+              </button>
+            </div>
+          )}
+
+          {suppliers.length > 0 && barangList.length === 0 && (
+            <div className="p-4 bg-amber-50 dark:bg-amber-955/40 border-2 border-amber-300 dark:border-amber-700/60 rounded-2xl flex items-center justify-between text-xs font-semibold text-amber-900 dark:text-amber-200 shadow-md">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-amber-500 text-white flex items-center justify-center font-extrabold text-lg flex-shrink-0 shadow-sm">⚠️</div>
+                <div>
+                  <span className="font-extrabold text-amber-950 dark:text-amber-100 block text-sm">Alur Kerja Terhambat (Belum Ada Master Barang)</span>
+                  <span>Anda <strong>wajib mengisi Master Barang terlebih dahulu</strong> sebelum menetapkan harga.</span>
+                </div>
+              </div>
+              <button onClick={() => onNavigate && onNavigate('barang')} className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl font-bold shadow-md hover:shadow-lg transition-all flex items-center gap-2 flex-shrink-0 ml-4">
+                <i data-lucide="package" className="w-4 h-4"></i>
+                Isi Master Barang Sekarang
+              </button>
+            </div>
+          )}
+
+          {suppliers.length > 0 && barangList.length > 0 && poList.length === 0 && buktiPembelian.length === 0 && (
+            <div className="p-4 bg-amber-50 dark:bg-amber-955/40 border-2 border-amber-300 dark:border-amber-700/60 rounded-2xl flex items-center justify-between text-xs font-semibold text-amber-900 dark:text-amber-200 shadow-md">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-amber-500 text-white flex items-center justify-center font-extrabold text-lg flex-shrink-0 shadow-sm">⚠️</div>
+                <div>
+                  <span className="font-extrabold text-amber-950 dark:text-amber-100 block text-sm">Alur Kerja Terhambat (Belum Ada Pencatatan Pembelian)</span>
+                  <span>Sesuai alur operasional, Anda <strong>wajib mencatat Pembelian (Purchase Order / Bukti Pembelian) terlebih dahulu</strong> sebelum menetapkan harga barang.</span>
+                </div>
+              </div>
+              <button onClick={() => onNavigate && onNavigate('po')} className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl font-bold shadow-md hover:shadow-lg transition-all flex items-center gap-2 flex-shrink-0 ml-4">
+                <i data-lucide="file-text" className="w-4 h-4"></i>
+                Catat Pembelian Sekarang
+              </button>
+            </div>
+          )}
+
           {priceAlerts && priceAlerts.length > 0 && (
             <div className="p-4 bg-amber-50 dark:bg-amber-955/20 border border-amber-200 dark:border-amber-900/40 text-amber-850 dark:text-amber-300 rounded-2xl text-xs font-semibold flex items-start gap-3 no-print">
               <i data-lucide="bell" className="w-4 h-4 text-amber-550 flex-shrink-0 mt-0.5 animate-bounce"></i>
@@ -3793,6 +4320,24 @@
               {!isReadOnly && (
                 <button 
                   onClick={() => {
+                    if (suppliers.length === 0) {
+                      showToast("Perhatian Alur: Wajib mengisi Master Supplier terlebih dahulu.", "error");
+                      alert("⚠️ ALUR KERJA TERHALANG\n\nAnda wajib mengisi Master Supplier terlebih dahulu.");
+                      if (onNavigate) onNavigate('supplier');
+                      return;
+                    }
+                    if (barangList.length === 0) {
+                      showToast("Perhatian Alur: Wajib mengisi Master Barang terlebih dahulu.", "error");
+                      alert("⚠️ ALUR KERJA TERHALANG\n\nAnda wajib mengisi Master Barang terlebih dahulu.");
+                      if (onNavigate) onNavigate('barang');
+                      return;
+                    }
+                    if (poList.length === 0 && buktiPembelian.length === 0) {
+                      showToast("Perhatian Alur: Wajib mencatat Pembelian terlebih dahulu sebelum menetapkan harga.", "error");
+                      alert("⚠️ ALUR KERJA TERHALANG\n\nSesuai alur operasional, Anda wajib mencatat Pembelian (PO / Bukti Pembelian) terlebih dahulu sebelum menetapkan harga barang.");
+                      if (onNavigate) onNavigate('po');
+                      return;
+                    }
                     setEffectiveDate(new Date().toISOString().split('T')[0]);
                     setModalOpen(true);
                   }}
@@ -4008,7 +4553,12 @@
                       filteredBarang.map((b, idx) => (
                         <tr key={b.id} className="group hover:bg-slate-50/50 dark:hover:bg-slate-900/10">
                           <td className="sticky-col-1 bg-white dark:bg-slate-955 group-hover:bg-slate-50 dark:group-hover:bg-slate-900 py-3 px-4 border-r border-b border-slate-150 dark:border-slate-850 text-center text-slate-400 font-bold min-w-[40px] w-[40px]">{idx + 1}</td>
-                          <td className="sticky-col-2 bg-white dark:bg-slate-955 group-hover:bg-slate-50 dark:group-hover:bg-slate-900 py-3 px-6 border-r border-b border-slate-150 dark:border-slate-850 font-extrabold text-slate-855 dark:text-white truncate min-w-[220px] w-[220px] max-w-[220px]" title={b.name}>{b.name}</td>
+                          <td className="sticky-col-2 bg-white dark:bg-slate-955 group-hover:bg-slate-50 dark:group-hover:bg-slate-900 py-3 px-6 border-r border-b border-slate-150 dark:border-slate-850 font-extrabold text-slate-855 dark:text-white min-w-[220px] w-[220px] max-w-[220px]">
+                            <div className="truncate font-black" title={b.name}>{b.name}</div>
+                            <span className={`inline-block mt-0.5 px-1.5 py-0.2 rounded text-[9px] font-extrabold ${b.stock > 50 ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300' : b.stock > 0 ? 'bg-amber-50 text-amber-700 dark:bg-amber-955/40 dark:text-amber-300' : 'bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-300'}`}>
+                              Stok: {b.stock || 0} {b.unit}
+                            </span>
+                          </td>
                           <td className="sticky-col-3 bg-white dark:bg-slate-955 group-hover:bg-slate-50 dark:group-hover:bg-slate-900 py-3 px-4 border-r-2 border-b border-slate-200 dark:border-slate-800 text-center text-slate-550 capitalize min-w-[80px] w-[80px] shadow-[4px_0_8px_-2px_rgba(0,0,0,0.08)]">{b.unit || '-'}</td>
                           {selectedMonths.map(mIdx => {
                             const numWeeks = getWeeksInMonth(selectedYear, mIdx);
@@ -4191,7 +4741,7 @@
     // ==========================================
     // 7. PURCHASE ORDER (PO) VIEW MODULE
     // ==========================================
-    function PurchaseOrderModule({ poList, suppliers, barangList, priceLists, customers, invoices, globalSearch, reloadData, logActivity, showToast, currentUser, onlyShowShipments }) {
+    function PurchaseOrderModule({ poList, suppliers, barangList, priceLists, customers, invoices, globalSearch, reloadData, logActivity, showToast, currentUser, onlyShowShipments, onNavigate, buktiPembelian = [] }) {
       const isReadOnly = currentUser?.role === 'mitra';
       const [modalOpen, setModalOpen] = React.useState(false);
       const [viewPO, setViewPO] = React.useState(null);
@@ -4248,6 +4798,18 @@
       }, [viewPO, receiptPO, modalOpen, poItems.length]);
 
       const openModal = () => {
+        if (suppliers.length === 0) {
+          showToast("Perhatian Alur: Wajib mengisikan Master Supplier terlebih dahulu sebelum mencatat Pembelian.", "error");
+          alert("⚠️ ALUR KERJA TERHALANG\n\nAnda wajib mengisikan Master Supplier terlebih dahulu sebelum mencatat Pembelian.");
+          if (onNavigate) onNavigate('supplier');
+          return;
+        }
+        if (barangList.length === 0) {
+          showToast("Perhatian Alur: Wajib mengisikan Master Barang terlebih dahulu sebelum mencatat Pembelian.", "error");
+          alert("⚠️ ALUR KERJA TERHALANG\n\nAnda wajib mengisikan Master Barang terlebih dahulu sebelum mencatat Pembelian.");
+          if (onNavigate) onNavigate('barang');
+          return;
+        }
         const num = 'PO-' + new Date().getFullYear() + String(new Date().getMonth() + 1).padStart(2, '0') + '-' + String(poList.length + 1).padStart(4, '0');
         setEditingId(null);
         setPoNumber(num);
@@ -4350,9 +4912,21 @@
           return;
         }
 
+        let validSupplierId = Number(supplierId);
+        if (!validSupplierId) {
+          if (poItems.length > 0 && poItems[0].barangId) {
+            const b = barangList.find(x => x.id === Number(poItems[0].barangId));
+            if (b && b.supplierId) validSupplierId = Number(b.supplierId);
+          }
+          if (!validSupplierId && suppliers.length > 0) {
+            validSupplierId = Number(suppliers[0].id);
+          }
+          if (!validSupplierId) validSupplierId = 1;
+        }
+
         const data = {
           poNumber,
-          supplierId: 0, // PT AR MULTI KARYA (Fixed)
+          supplierId: validSupplierId,
           poDate,
           deliveryRequestDate,
           status,
@@ -4774,6 +5348,18 @@
 
       // Import Excel using SheetJS
       const handleImportExcel = (e) => {
+        if (suppliers.length === 0 || barangList.length === 0) {
+          e.target.value = '';
+          if (suppliers.length === 0) {
+            alert("⚠️ ALUR KERJA TERHALANG\n\nAnda wajib mengisikan Master Supplier terlebih dahulu sebelum mencatat Pembelian.");
+            if (onNavigate) onNavigate('supplier');
+          } else {
+            alert("⚠️ ALUR KERJA TERHALANG\n\nAnda wajib mengisikan Master Barang terlebih dahulu sebelum mencatat Pembelian.");
+            if (onNavigate) onNavigate('barang');
+          }
+          return;
+        }
+
         const file = e.target.files[0];
         if (!file) return;
 
@@ -4812,10 +5398,11 @@
 
               // Create default item matching first item in price list or first item in barang
               let bId = barangList[0] ? barangList[0].id : 1;
+              let supId = barangList[0] && barangList[0].supplierId ? barangList[0].supplierId : (suppliers[0] ? suppliers[0].id : 1);
               const newPO = {
                 poNumber: rNumber,
                 jenis: rJenis,
-                supplierId: 0,
+                supplierId: supId,
                 customerId: custId,
                 poDate: rDate,
                 deliveryRequestDate: rDeliveryDate,
@@ -4850,20 +5437,20 @@
       // Export Excel using SheetJS
       const handleExportExcel = () => {
         const rows = [
-          ['Nomor PO', 'Tipe/Jenis', 'Nama Pemesan', 'Tanggal PO', 'Permintaan Kirim', 'Pembuat / SPPG', 'Status', 'Total Uang', 'Deskripsi']
+          ['Nomor PO', 'Tipe/Jenis', 'Nama Pemesan', 'Tanggal PO', 'Permintaan Kirim', 'Pembuat / SPPG', 'Status', 'Total Uang (IDR)', 'Deskripsi']
         ];
         poList.forEach(po => {
           const cust = customers.find(c => c.id === po.customerId);
-          const total = po.totalAmount || po.items.reduce((s, i) => s + (i.qty * (i.price || 0)), 0);
+          const amount = po.totalAmount || po.items.reduce((s, i) => s + (i.qty * (i.price || 0)), 0);
           rows.push([
             po.poNumber,
             po.jenis || 'Barang',
             cust ? cust.name : '-',
             po.poDate,
-            po.deliveryRequestDate || '',
-            po.createdByDetail || '',
-            po.status,
-            total,
+            po.deliveryRequestDate || '-',
+            po.createdByDetail || '-',
+            po.status || 'Draft',
+            amount,
             po.deskripsi || ''
           ]);
         });
@@ -4878,6 +5465,47 @@
 
       return (
         <div className="space-y-6 animate-fade-in">
+          <WorkflowProgressCard 
+            suppliers={suppliers} 
+            barangList={barangList} 
+            poList={poList} 
+            buktiPembelian={buktiPembelian} 
+            priceLists={priceLists} 
+            onNavigate={onNavigate} 
+          />
+
+          {suppliers.length === 0 && (
+            <div className="p-4 bg-amber-50 dark:bg-amber-955/40 border-2 border-amber-300 dark:border-amber-700/60 rounded-2xl flex items-center justify-between text-xs font-semibold text-amber-900 dark:text-amber-200 shadow-md">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-amber-500 text-white flex items-center justify-center font-extrabold text-lg flex-shrink-0 shadow-sm">⚠️</div>
+                <div>
+                  <span className="font-extrabold text-amber-950 dark:text-amber-100 block text-sm">Alur Kerja Terhambat (Belum Ada Master Supplier)</span>
+                  <span>Anda <strong>wajib mengisikan Master Supplier terlebih dahulu</strong> sebelum mencatat Pembelian.</span>
+                </div>
+              </div>
+              <button onClick={() => onNavigate && onNavigate('supplier')} className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl font-bold shadow-md hover:shadow-lg transition-all flex items-center gap-2 flex-shrink-0 ml-4">
+                <i data-lucide="truck" className="w-4 h-4"></i>
+                Isi Master Supplier Sekarang
+              </button>
+            </div>
+          )}
+
+          {suppliers.length > 0 && barangList.length === 0 && (
+            <div className="p-4 bg-amber-50 dark:bg-amber-955/40 border-2 border-amber-300 dark:border-amber-700/60 rounded-2xl flex items-center justify-between text-xs font-semibold text-amber-900 dark:text-amber-200 shadow-md">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-amber-500 text-white flex items-center justify-center font-extrabold text-lg flex-shrink-0 shadow-sm">⚠️</div>
+                <div>
+                  <span className="font-extrabold text-amber-950 dark:text-amber-100 block text-sm">Alur Kerja Terhambat (Belum Ada Master Barang)</span>
+                  <span>Anda <strong>wajib mengisikan Master Barang terlebih dahulu</strong> sebelum mencatat Pembelian.</span>
+                </div>
+              </div>
+              <button onClick={() => onNavigate && onNavigate('barang')} className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl font-bold shadow-md hover:shadow-lg transition-all flex items-center gap-2 flex-shrink-0 ml-4">
+                <i data-lucide="package" className="w-4 h-4"></i>
+                Isi Master Barang Sekarang
+              </button>
+            </div>
+          )}
+
           <div className="flex justify-between items-center">
             <div>
               <h3 className="font-bold text-xs uppercase text-slate-400 tracking-wider">
@@ -5618,7 +6246,7 @@
           {viewInvoiceModal && (
             <InvoiceDocumentModal 
               invoice={viewInvoiceModal} 
-              customers={customers} 
+customers={customers} 
               barangList={barangList} 
               settings={{ name: 'PT AR MULTI KARYA', address: 'Pusat Operasional AR Multi Karya', phone: '0812-3456-7890', email: 'finance@armultikarya.co.id' }}
               onClose={() => setViewInvoiceModal(null)} 
@@ -5632,7 +6260,7 @@
     // ==========================================
     // 8. BUKTI PEMBELIAN VIEW MODULE
     // ==========================================
-    function BuktiPembelianModule({ buktiPembelian, poList, barangList, suppliers, customers, globalSearch, reloadData, logActivity, showToast, currentUser }) {
+    function BuktiPembelianModule({ buktiPembelian, poList, barangList, suppliers, customers, globalSearch, reloadData, logActivity, showToast, currentUser, onNavigate, priceLists = [] }) {
       const isReadOnly = currentUser?.role === 'mitra';
       const [modalOpen, setModalOpen] = React.useState(false);
       const [viewReceipt, setViewReceipt] = React.useState(null);
@@ -5704,6 +6332,18 @@
       }, [modalOpen, viewReceipt, items.length]);
 
       const openModal = () => {
+        if (suppliers.length === 0) {
+          showToast("Perhatian Alur: Wajib mengisikan Master Supplier terlebih dahulu sebelum mencatat Pembelian.", "error");
+          alert("⚠️ ALUR KERJA TERHALANG\n\nAnda wajib mengisikan Master Supplier terlebih dahulu sebelum mencatat Pembelian.");
+          if (onNavigate) onNavigate('supplier');
+          return;
+        }
+        if (barangList.length === 0) {
+          showToast("Perhatian Alur: Wajib mengisikan Master Barang terlebih dahulu sebelum mencatat Pembelian.", "error");
+          alert("⚠️ ALUR KERJA TERHALANG\n\nAnda wajib mengisikan Master Barang terlebih dahulu sebelum mencatat Pembelian.");
+          if (onNavigate) onNavigate('barang');
+          return;
+        }
         const num = 'BP-' + new Date().getFullYear() + String(new Date().getMonth() + 1).padStart(2, '0') + '-' + String(buktiPembelian.length + 1).padStart(4, '0');
         setReceiptNumber(num);
         setPoId('');
@@ -5776,18 +6416,19 @@
           reloadData();
         } catch (err) {
           console.error(err);
-          showToast('Gagal menyimpan transaksi.', 'error');
+          showToast('Gagal menyimpan bukti pembelian.', 'error');
         }
       };
 
       const handleDelete = async (b) => {
-        if (confirm(`Apakah Anda yakin menghapus Bukti Pembelian ${b.receiptNumber}? Tindakan ini akan menarik kembali penambahan stok.`)) {
+        if (confirm(`Apakah Anda yakin ingin menghapus Bukti Pembelian ${b.receiptNumber}? Penambahan stok akan ditarik kembali!`)) {
           try {
             await deleteBuktiPembelianTransaction(b.id, b.receiptNumber, b.items);
-            showToast(`Bukti Pembelian ${b.receiptNumber} dibatalkan. Stok disesuaikan.`, 'error');
+            showToast(`Bukti Pembelian ${b.receiptNumber} dihapus. Stok disesuaikan.`, 'error');
             reloadData();
-          } catch(err) {
-            showToast('Gagal membatalkan transaksi.', 'error');
+          } catch (err) {
+            console.error(err);
+            showToast('Gagal membatalkan bukti pembelian.', 'error');
           }
         }
       };
@@ -5812,10 +6453,20 @@
         reader.readAsDataURL(file);
       };
 
-
-
       // Import Excel using SheetJS
       const handleImportExcel = (e) => {
+        if (suppliers.length === 0 || barangList.length === 0) {
+          e.target.value = '';
+          if (suppliers.length === 0) {
+            alert("⚠️ ALUR KERJA TERHALANG\n\nAnda wajib mengisikan Master Supplier terlebih dahulu sebelum mencatat Pembelian.");
+            if (onNavigate) onNavigate('supplier');
+          } else {
+            alert("⚠️ ALUR KERJA TERHALANG\n\nAnda wajib mengisikan Master Barang terlebih dahulu sebelum mencatat Pembelian.");
+            if (onNavigate) onNavigate('barang');
+          }
+          return;
+        }
+
         const file = e.target.files[0];
         if (!file) return;
 
@@ -5885,23 +6536,23 @@
         buktiPembelian.forEach(b => {
           const po = poList.find(p => p.id === b.poId);
           const sup = suppliers.find(s => s.id === b.supplierId);
-          const grandCost = b.items.reduce((sum, item) => sum + (item.qty * item.unitCost), 0);
+          const totalCost = b.items ? b.items.reduce((sum, item) => sum + (item.qty * (item.unitCost || 0)), 0) : 0;
           rows.push([
             b.receiptNumber,
             po ? po.poNumber : '-',
             sup ? sup.name : '-',
-            po ? po.createdByDetail || '' : '',
+            po ? po.createdByDetail || '-' : '-',
             b.receiptDate,
-            grandCost
+            totalCost
           ]);
         });
 
         const ws = XLSX.utils.aoa_to_sheet(rows);
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, 'Bukti Pembelian');
-        XLSX.writeFile(wb, 'Data_Penerimaan_PT_AR.xlsx');
-        logActivity('Export Bukti Pembelian', 'Data penerimaan/bukti pembelian diexport ke Excel.');
-        showToast('Data penerimaan berhasil diexport ke Excel.');
+        XLSX.writeFile(wb, 'Data_Bukti_Pembelian_PT_AR.xlsx');
+        logActivity('Export Bukti Pembelian', 'Data bukti pembelian diexport ke Excel.');
+        showToast('Data bukti pembelian berhasil diexport ke Excel.');
       };
 
       const filtered = buktiPembelian.filter(b => {
@@ -5944,6 +6595,47 @@
 
       return (
         <div className="space-y-6 animate-fade-in">
+          <WorkflowProgressCard 
+            suppliers={suppliers} 
+            barangList={barangList} 
+            poList={poList} 
+            buktiPembelian={buktiPembelian} 
+            priceLists={priceLists} 
+            onNavigate={onNavigate} 
+          />
+
+          {suppliers.length === 0 && (
+            <div className="p-4 bg-amber-50 dark:bg-amber-955/40 border-2 border-amber-300 dark:border-amber-700/60 rounded-2xl flex items-center justify-between text-xs font-semibold text-amber-900 dark:text-amber-200 shadow-md">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-amber-500 text-white flex items-center justify-center font-extrabold text-lg flex-shrink-0 shadow-sm">⚠️</div>
+                <div>
+                  <span className="font-extrabold text-amber-950 dark:text-amber-100 block text-sm">Alur Kerja Terhambat (Belum Ada Master Supplier)</span>
+                  <span>Anda <strong>wajib mengisikan Master Supplier terlebih dahulu</strong> sebelum mencatat Pembelian.</span>
+                </div>
+              </div>
+              <button onClick={() => onNavigate && onNavigate('supplier')} className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl font-bold shadow-md hover:shadow-lg transition-all flex items-center gap-2 flex-shrink-0 ml-4">
+                <i data-lucide="truck" className="w-4 h-4"></i>
+                Isi Master Supplier Sekarang
+              </button>
+            </div>
+          )}
+
+          {suppliers.length > 0 && barangList.length === 0 && (
+            <div className="p-4 bg-amber-50 dark:bg-amber-955/40 border-2 border-amber-300 dark:border-amber-700/60 rounded-2xl flex items-center justify-between text-xs font-semibold text-amber-900 dark:text-amber-200 shadow-md">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-amber-500 text-white flex items-center justify-center font-extrabold text-lg flex-shrink-0 shadow-sm">⚠️</div>
+                <div>
+                  <span className="font-extrabold text-amber-950 dark:text-amber-100 block text-sm">Alur Kerja Terhambat (Belum Ada Master Barang)</span>
+                  <span>Anda <strong>wajib mengisikan Master Barang terlebih dahulu</strong> sebelum mencatat Pembelian.</span>
+                </div>
+              </div>
+              <button onClick={() => onNavigate && onNavigate('barang')} className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl font-bold shadow-md hover:shadow-lg transition-all flex items-center gap-2 flex-shrink-0 ml-4">
+                <i data-lucide="package" className="w-4 h-4"></i>
+                Isi Master Barang Sekarang
+              </button>
+            </div>
+          )}
+
           <div className="flex justify-between items-center">
             <div>
               <h3 className="font-bold text-xs uppercase text-slate-400 tracking-wider">Bukti Pembelian (Bahan Baku Masuk)</h3>
@@ -10536,9 +11228,21 @@ function RekapLabaRugiModule({ invoices, buktiPembelian, globalSearch, settings,
           });
         }
         
+        let validSupplierId = Number(supplierId);
+        if (!validSupplierId) {
+          if (items.length > 0 && items[0].barangId) {
+            const b = barangList.find(x => x.id === Number(items[0].barangId));
+            if (b && b.supplierId) validSupplierId = Number(b.supplierId);
+          }
+          if (!validSupplierId && suppliers.length > 0) {
+            validSupplierId = Number(suppliers[0].id);
+          }
+          if (!validSupplierId) validSupplierId = 1;
+        }
+
         const data = {
           poNumber: nextNum,
-          supplierId: Number(supplierId) || 0,
+          supplierId: validSupplierId,
           poDate,
           deliveryRequestDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
           status: 'Draft',
