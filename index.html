@@ -8641,6 +8641,21 @@ function RekapLabaRugiModule({ invoices, buktiPembelian, globalSearch, settings,
         tax: 0
       });
 
+      const detectMonthKey = (itemTitle = '', startDate = '') => {
+        if (startDate && startDate.length >= 7) {
+          return startDate.substring(0, 7);
+        }
+        if (itemTitle) {
+          const match = itemTitle.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+          if (match) {
+            const [, d, m, y] = match;
+            return `${y}-${m.padStart(2, '0')}`;
+          }
+        }
+        const now = new Date();
+        return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+      };
+
       // Helper to compute allocation amounts according to user's order:
       // Base Profit -> Deduct Pajak PT (2%) & Gaji Finance -> Calculate Mitra 1-6 (10%) & Penerima 7 (5%) from remaining base!
       const computeAllocationsWithOrder = (baseRev, allocsList = []) => {
@@ -8958,21 +8973,6 @@ function RekapLabaRugiModule({ invoices, buktiPembelian, globalSearch, settings,
         }
 
         return `Laba Periode (${startFormatted} s/d ${endFormatted}) PERIODE ${periodNum}`;
-      };
-
-      const detectMonthKey = (itemTitle = '', startDate = '') => {
-        if (startDate && startDate.length >= 7) {
-          return startDate.substring(0, 7);
-        }
-        if (itemTitle) {
-          const match = itemTitle.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
-          if (match) {
-            const [, d, m, y] = match;
-            return `${y}-${m.padStart(2, '0')}`;
-          }
-        }
-        const now = new Date();
-        return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
       };
 
       const handleCalculatePeriodProfit = () => {
