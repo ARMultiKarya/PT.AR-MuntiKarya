@@ -8645,16 +8645,24 @@ function RekapLabaRugiModule({ invoices, buktiPembelian, globalSearch, settings,
       const computeAllocationsWithOrder = (baseRev, allocsList = []) => {
         let netBaseForMitra = Number(baseRev || 0);
 
-        // 1. Calculate Priority Deductions (Pajak PT & Gaji Finance) first
-        allocsList.forEach(a => {
-          let valNum = Number(a.value !== undefined ? a.value : (a.val !== undefined ? a.val : 0));
+        const isMitraShare = (a) => {
           const nameLower = (a.name || '').toLowerCase();
-          if (valNum === 0) {
-            if (nameLower.includes('pajak')) valNum = 2;
-            else if (nameLower.includes('gaji finance')) valNum = 1250000;
-          }
-          if (nameLower.includes('pajak') || nameLower.includes('gaji finance')) {
-            const priorityComp = (a.type === 'percent' || nameLower.includes('pajak')) ? (Number(baseRev || 0) * (valNum / 100)) : valNum;
+          return nameLower.includes('mitra') || nameLower.includes('penerima');
+        };
+
+        // 1. Deduct ALL prior non-Mitra allocations (Pajak PT, Gaji Finance, Share Profit 100, and any custom non-mitra deductions)
+        allocsList.forEach(a => {
+          if (!isMitraShare(a)) {
+            let valNum = Number(a.value !== undefined ? a.value : (a.val !== undefined ? a.val : 0));
+            const nameLower = (a.name || '').toLowerCase();
+            if (valNum === 0) {
+              if (nameLower.includes('pajak')) valNum = 2;
+              else if (nameLower.includes('gaji finance')) valNum = 1250000;
+              else if (nameLower.includes('share profit')) valNum = 1509000;
+            }
+            const priorityComp = (a.type === 'percent' || nameLower.includes('pajak') || nameLower.includes('%'))
+              ? (Number(baseRev || 0) * (valNum / 100))
+              : valNum;
             netBaseForMitra -= priorityComp;
           }
         });
@@ -8675,14 +8683,14 @@ function RekapLabaRugiModule({ invoices, buktiPembelian, globalSearch, settings,
           }
 
           let comp = 0;
-          if (a.type === 'percent' || nameLower.includes('pajak') || nameLower.includes('%') || nameLower.includes('mitra') || nameLower.includes('penerima')) {
-            if (nameLower.includes('pajak')) {
+          if (isMitraShare(a)) {
+            comp = netBaseForMitra * (valNum / 100);
+          } else {
+            if (a.type === 'percent' || nameLower.includes('pajak') || nameLower.includes('%')) {
               comp = Number(baseRev || 0) * (valNum / 100);
             } else {
-              comp = netBaseForMitra * (valNum / 100);
+              comp = valNum;
             }
-          } else {
-            comp = valNum;
           }
 
           return {
