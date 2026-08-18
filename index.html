@@ -9093,6 +9093,7 @@ function RekapLabaRugiModule({ invoices, buktiPembelian, globalSearch, settings,
       }, [manualHistory]);
 
       const openSyncModal = (revenueVal, hppVal = 0, pembelianVal = 0, taxVal = 0, labaBersihVal = null, titleVal = '', allocationsVal = []) => {
+        const now = new Date();
         const defaultKey = detectMonthKey(titleVal, manualPeriodStart);
         const computedLabaBersih = (labaBersihVal !== null && labaBersihVal !== undefined)
           ? Number(labaBersihVal)
