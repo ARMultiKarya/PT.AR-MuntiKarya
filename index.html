@@ -9677,12 +9677,7 @@ function RekapLabaRugiModule({ invoices, buktiPembelian, globalSearch, settings,
       };
 
 
-      const handleLoadManualHistory = (entry) => {
-        setManualBaseProfit(entry.manualBaseProfit);
-        setManualBaseProfitInput(entry.manualBaseProfit === 0 ? '' : new Intl.NumberFormat('id-ID').format(entry.manualBaseProfit));
-        setAllocations(entry.allocations || []);
-        if (showToast) showToast(`Kalkulasi "${entry.title}" berhasil dimuat ke layar.`);
-      };
+
 
       const handleManualBaseProfitChange = (valStr) => {
         const cleanDigits = valStr.replace(/\D/g, '');
