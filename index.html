@@ -8586,7 +8586,108 @@ customers={customers}
 function RekapLabaRugiModule({ invoices, buktiPembelian, globalSearch, settings, currentUser, showToast }) {
       const [startDate, setStartDate] = React.useState('');
       const [endDate, setEndDate] = React.useState('');
+      const [selectedMonthKey, setSelectedMonthKey] = React.useState('');
       const [labaRugiMode, setLabaRugiMode] = React.useState(currentUser?.role === 'mitra' ? 'mitra' : 'standard');
+
+      // Compute Monthly History Breakdown
+      const monthlyHistory = React.useMemo(() => {
+        const monthsMap = {};
+        const monthNames = [
+          'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+          'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+        ];
+
+        // Process Invoices for Sales, HPP, Tax
+        (invoices || []).forEach(inv => {
+          if (!inv || !inv.invoiceDate) return;
+          const monthKey = inv.invoiceDate.substring(0, 7); // "YYYY-MM"
+          if (!monthsMap[monthKey]) {
+            monthsMap[monthKey] = {
+              monthKey,
+              revenue: 0,
+              hpp: 0,
+              tax: 0,
+              pembelian: 0,
+              invoiceCount: 0,
+              buktiCount: 0
+            };
+          }
+          const netRev = (Number(inv.subtotal) || 0) - (Number(inv.discount) || 0);
+          monthsMap[monthKey].revenue += netRev;
+          monthsMap[monthKey].hpp += (Number(inv.hpp) || 0);
+          monthsMap[monthKey].tax += (Number(inv.taxAmount) || 0);
+          monthsMap[monthKey].invoiceCount += 1;
+        });
+
+        // Process Bukti Pembelian for Purchases
+        (buktiPembelian || []).forEach(b => {
+          if (!b || !b.receiptDate) return;
+          const monthKey = b.receiptDate.substring(0, 7); // "YYYY-MM"
+          if (!monthsMap[monthKey]) {
+            monthsMap[monthKey] = {
+              monthKey,
+              revenue: 0,
+              hpp: 0,
+              tax: 0,
+              pembelian: 0,
+              invoiceCount: 0,
+              buktiCount: 0
+            };
+          }
+          const totalCost = (b.items || []).reduce((sum, item) => sum + (Number(item.qty || 0) * Number(item.unitCost || 0)), 0);
+          monthsMap[monthKey].pembelian += totalCost;
+          monthsMap[monthKey].buktiCount += 1;
+        });
+
+        const sortedKeys = Object.keys(monthsMap).sort().reverse();
+        return sortedKeys.map(key => {
+          const item = monthsMap[key];
+          const [yearStr, monthStr] = key.split('-');
+          const monthIdx = parseInt(monthStr, 10) - 1;
+          const monthLabel = `${monthNames[monthIdx] || monthStr} ${yearStr}`;
+          const labaKotor = item.revenue - item.hpp;
+          const labaBersih = labaKotor - item.tax;
+
+          return {
+            ...item,
+            monthLabel,
+            labaKotor,
+            labaBersih
+          };
+        });
+      }, [invoices, buktiPembelian]);
+
+      const handleMonthSelect = (monthKey) => {
+        setSelectedMonthKey(monthKey);
+        if (!monthKey) {
+          setStartDate('');
+          setEndDate('');
+        } else {
+          const [yearStr, monthStr] = monthKey.split('-');
+          const y = parseInt(yearStr, 10);
+          const m = parseInt(monthStr, 10);
+          const firstDay = `${yearStr}-${monthStr.padStart(2, '0')}-01`;
+          const lastDayNum = new Date(y, m, 0).getDate();
+          const lastDay = `${yearStr}-${monthStr.padStart(2, '0')}-${String(lastDayNum).padStart(2, '0')}`;
+          setStartDate(firstDay);
+          setEndDate(lastDay);
+        }
+      };
+
+      const setThisMonthFilter = () => {
+        const now = new Date();
+        const y = now.getFullYear();
+        const m = String(now.getMonth() + 1).padStart(2, '0');
+        handleMonthSelect(`${y}-${m}`);
+      };
+
+      const setLastMonthFilter = () => {
+        const now = new Date();
+        now.setMonth(now.getMonth() - 1);
+        const y = now.getFullYear();
+        const m = String(now.getMonth() + 1).padStart(2, '0');
+        handleMonthSelect(`${y}-${m}`);
+      };
 
       // Manual Inputs for Mitra Mode
       const [gajiFinance, setGajiFinance] = React.useState(1250000); // 5,000,000 / 4 portion
@@ -8623,7 +8724,7 @@ function RekapLabaRugiModule({ invoices, buktiPembelian, globalSearch, settings,
         if (window.lucide) {
           window.lucide.createIcons();
         }
-      }, [labaRugiMode, allocations]);
+      }, [labaRugiMode, allocations, selectedMonthKey]);
 
       const handleAddAllocation = (e) => {
         e.preventDefault();
@@ -8676,6 +8777,7 @@ function RekapLabaRugiModule({ invoices, buktiPembelian, globalSearch, settings,
         
         setStartDate(monday.toISOString().split('T')[0]);
         setEndDate(saturday.toISOString().split('T')[0]);
+        setSelectedMonthKey('');
       };
 
       // Filter functions
@@ -8917,28 +9019,55 @@ function RekapLabaRugiModule({ invoices, buktiPembelian, globalSearch, settings,
             </div>
           </div>
 
-          {/* Filter Tanggal */}
+          {/* Filter Tanggal & Bulan */}
           <div className="bg-white dark:bg-slate-955 p-5 rounded-2xl border border-slate-150 dark:border-slate-850 flex flex-wrap gap-4 items-end text-xs font-semibold no-print shadow-sm">
             <div>
+              <label className="block text-[10px] text-slate-400 uppercase tracking-wide mb-1">Pilih Riwayat Bulan</label>
+              <select 
+                value={selectedMonthKey} 
+                onChange={(e) => handleMonthSelect(e.target.value)}
+                className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-3 py-2 rounded-xl focus:border-primary-500 focus:outline-none dark:text-white font-bold"
+              >
+                <option value="">-- Semua Bulan --</option>
+                {monthlyHistory.map(m => (
+                  <option key={m.monthKey} value={m.monthKey}>
+                    {m.monthLabel} ({formatRupiah(m.labaBersih)})
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
               <label className="block text-[10px] text-slate-400 uppercase tracking-wide mb-1">Tanggal Mulai</label>
-              <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-3 py-2 rounded-xl focus:border-primary-500 focus:outline-none dark:text-white" />
+              <input type="date" value={startDate} onChange={(e) => { setStartDate(e.target.value); setSelectedMonthKey(''); }} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-3 py-2 rounded-xl focus:border-primary-500 focus:outline-none dark:text-white" />
             </div>
             <div>
               <label className="block text-[10px] text-slate-400 uppercase tracking-wide mb-1">Tanggal Akhir</label>
-              <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-3 py-2 rounded-xl focus:border-primary-500 focus:outline-none dark:text-white" />
+              <input type="date" value={endDate} onChange={(e) => { setEndDate(e.target.value); setSelectedMonthKey(''); }} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-3 py-2 rounded-xl focus:border-primary-500 focus:outline-none dark:text-white" />
             </div>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               <button 
-                onClick={setThisWeekFilter}
-                className="bg-primary-50 hover:bg-primary-100 text-primary-700 dark:bg-primary-950/20 dark:text-primary-400 px-3 py-2.5 rounded-xl font-bold border border-primary-100 dark:border-primary-900"
+                onClick={setThisMonthFilter}
+                className="bg-primary-50 hover:bg-primary-100 text-primary-700 dark:bg-primary-950/20 dark:text-primary-400 px-3 py-2 rounded-xl font-bold border border-primary-100 dark:border-primary-900"
               >
-                Minggu Ini (Senin-Sabtu)
+                Bulan Ini
               </button>
               <button 
-                onClick={() => { setStartDate(''); setEndDate(''); }}
-                className="bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 px-3 py-2.5 rounded-xl font-bold border border-slate-200 dark:border-slate-700"
+                onClick={setLastMonthFilter}
+                className="bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 px-3 py-2 rounded-xl font-bold border border-slate-200 dark:border-slate-700"
               >
-                Reset Filter
+                Bulan Lalu
+              </button>
+              <button 
+                onClick={setThisWeekFilter}
+                className="bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 px-3 py-2 rounded-xl font-bold border border-slate-200 dark:border-slate-700"
+              >
+                Minggu Ini
+              </button>
+              <button 
+                onClick={() => { setStartDate(''); setEndDate(''); setSelectedMonthKey(''); }}
+                className="bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 px-3 py-2 rounded-xl font-bold border border-slate-200 dark:border-slate-700"
+              >
+                Reset
               </button>
             </div>
           </div>
@@ -9354,6 +9483,116 @@ function RekapLabaRugiModule({ invoices, buktiPembelian, globalSearch, settings,
               </div>
             </div>
           )}
+
+          {/* Card Riwayat Laba Rugi Tiap Bulan */}
+          <div className="bg-white dark:bg-slate-955 p-6 rounded-2xl border border-slate-150 dark:border-slate-850 shadow-sm space-y-4 mt-8">
+            <div className="flex justify-between items-center flex-wrap gap-4 border-b pb-3 border-slate-100 dark:border-slate-900">
+              <div>
+                <h4 className="font-bold text-xs uppercase tracking-wider text-slate-700 dark:text-slate-200 flex items-center gap-2">
+                  <i data-lucide="calendar-range" className="w-4 h-4 text-primary-500"></i> Riwayat Laba Rugi Per Bulan
+                </h4>
+                <span className="text-[10px] text-slate-400 font-medium block mt-0.5">
+                  Rekapitulasi pendapatan, HPP, pembelian, dan laba bersih tiap periode bulan
+                </span>
+              </div>
+              <span className="text-[10px] bg-primary-50 dark:bg-primary-950/30 text-primary-600 dark:text-primary-400 font-bold px-3 py-1 rounded-full border border-primary-100 dark:border-primary-900">
+                {monthlyHistory.length} Bulan Ter-rekam
+              </span>
+            </div>
+
+            {monthlyHistory.length === 0 ? (
+              <div className="text-center py-8 text-slate-400 text-xs italic">
+                Belum ada data transaksi penjualan atau pembelian bulanan.
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs border-collapse">
+                  <thead>
+                    <tr className="bg-slate-50 dark:bg-slate-900 text-slate-500 uppercase tracking-wider text-[10px] border-b border-slate-150 dark:border-slate-850">
+                      <th className="py-3 px-4">Periode Bulan</th>
+                      <th className="py-3 px-4 text-right">Pendapatan Jual</th>
+                      <th className="py-3 px-4 text-right">HPP Penjualan</th>
+                      <th className="py-3 px-4 text-right">Laba Kotor</th>
+                      <th className="py-3 px-4 text-right">Total Pembelian</th>
+                      <th className="py-3 px-4 text-right">Pajak PT (2%)</th>
+                      <th className="py-3 px-4 text-right">Laba Bersih</th>
+                      <th className="py-3 px-4 text-center no-print">Aksi Filter</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-900">
+                    {monthlyHistory.map((m) => {
+                      const isSelected = selectedMonthKey === m.monthKey;
+                      return (
+                        <tr key={m.monthKey} className={`hover:bg-slate-50/80 dark:hover:bg-slate-900/50 transition-colors ${isSelected ? 'bg-primary-50/40 dark:bg-primary-950/20 font-bold' : ''}`}>
+                          <td className="py-3 px-4 font-bold text-slate-800 dark:text-white flex items-center gap-2">
+                            <i data-lucide="calendar" className="w-3.5 h-3.5 text-slate-400"></i>
+                            {m.monthLabel}
+                            {isSelected && (
+                              <span className="text-[9px] bg-primary-600 text-white px-2 py-0.5 rounded-full font-semibold">Aktif</span>
+                            )}
+                          </td>
+                          <td className="py-3 px-4 text-right font-semibold text-primary-600 dark:text-primary-400">
+                            {formatRupiah(m.revenue)}
+                          </td>
+                          <td className="py-3 px-4 text-right text-slate-500">
+                            {formatRupiah(m.hpp)}
+                          </td>
+                          <td className="py-3 px-4 text-right font-semibold text-slate-700 dark:text-slate-200">
+                            {formatRupiah(m.labaKotor)}
+                          </td>
+                          <td className="py-3 px-4 text-right text-slate-500">
+                            {formatRupiah(m.pembelian)}
+                          </td>
+                          <td className="py-3 px-4 text-right text-amber-600">
+                            {formatRupiah(m.tax)}
+                          </td>
+                          <td className={`py-3 px-4 text-right font-extrabold ${m.labaBersih >= 0 ? 'text-green-600' : 'text-red-500'}`}>
+                            {formatRupiah(m.labaBersih)}
+                          </td>
+                          <td className="py-3 px-4 text-center no-print">
+                            <button
+                              onClick={() => handleMonthSelect(m.monthKey)}
+                              className={`px-3 py-1 rounded-lg text-[10px] font-bold transition-all ${
+                                isSelected
+                                  ? 'bg-primary-600 text-white shadow-sm'
+                                  : 'bg-slate-100 hover:bg-primary-50 hover:text-primary-600 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300'
+                              }`}
+                            >
+                              {isSelected ? 'Tersaring' : 'Lihat Bulan Ini'}
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                  <tfoot>
+                    <tr className="bg-slate-100/70 dark:bg-slate-900/90 font-extrabold text-slate-800 dark:text-white text-xs border-t-2 border-slate-200 dark:border-slate-800">
+                      <td className="py-3 px-4 uppercase">TOTAL KESELURUHAN</td>
+                      <td className="py-3 px-4 text-right text-primary-600 dark:text-primary-400">
+                        {formatRupiah(monthlyHistory.reduce((s, m) => s + m.revenue, 0))}
+                      </td>
+                      <td className="py-3 px-4 text-right">
+                        {formatRupiah(monthlyHistory.reduce((s, m) => s + m.hpp, 0))}
+                      </td>
+                      <td className="py-3 px-4 text-right">
+                        {formatRupiah(monthlyHistory.reduce((s, m) => s + m.labaKotor, 0))}
+                      </td>
+                      <td className="py-3 px-4 text-right">
+                        {formatRupiah(monthlyHistory.reduce((s, m) => s + m.pembelian, 0))}
+                      </td>
+                      <td className="py-3 px-4 text-right text-amber-600">
+                        {formatRupiah(monthlyHistory.reduce((s, m) => s + m.tax, 0))}
+                      </td>
+                      <td className="py-3 px-4 text-right text-green-600">
+                        {formatRupiah(monthlyHistory.reduce((s, m) => s + m.labaBersih, 0))}
+                      </td>
+                      <td className="py-3 px-4 no-print"></td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            )}
+          </div>
         </div>
       );
     }
