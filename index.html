@@ -8589,6 +8589,19 @@ function RekapLabaRugiModule({ invoices, buktiPembelian, globalSearch, settings,
       const [selectedMonthKey, setSelectedMonthKey] = React.useState('');
       const [labaRugiMode, setLabaRugiMode] = React.useState(currentUser?.role === 'mitra' ? 'mitra' : 'standard');
 
+      // Monthly Overrides & Hidden Months States
+      const [monthlyOverrides, setMonthlyOverrides] = React.useState(() => JSON.parse(localStorage.getItem('pt_ar_monthly_overrides') || '{}'));
+      const [monthlyHiddenKeys, setMonthlyHiddenKeys] = React.useState(() => JSON.parse(localStorage.getItem('pt_ar_monthly_hidden_keys') || '[]'));
+      const [editMonthModal, setEditMonthModal] = React.useState({
+        isOpen: false,
+        monthKey: '',
+        monthLabel: '',
+        revenue: 0,
+        hpp: 0,
+        pembelian: 0,
+        tax: 0
+      });
+
       // Compute Monthly History Breakdown
       const monthlyHistory = React.useMemo(() => {
         const monthsMap = {};
@@ -8639,23 +8652,48 @@ function RekapLabaRugiModule({ invoices, buktiPembelian, globalSearch, settings,
           monthsMap[monthKey].buktiCount += 1;
         });
 
-        const sortedKeys = Object.keys(monthsMap).sort().reverse();
+        // Apply custom added or overridden months
+        Object.keys(monthlyOverrides).forEach(key => {
+          if (!monthsMap[key]) {
+            monthsMap[key] = {
+              monthKey: key,
+              revenue: 0,
+              hpp: 0,
+              tax: 0,
+              pembelian: 0,
+              invoiceCount: 0,
+              buktiCount: 0
+            };
+          }
+          const ov = monthlyOverrides[key];
+          if (ov.revenue !== undefined) monthsMap[key].revenue = Number(ov.revenue);
+          if (ov.hpp !== undefined) monthsMap[key].hpp = Number(ov.hpp);
+          if (ov.pembelian !== undefined) monthsMap[key].pembelian = Number(ov.pembelian);
+          if (ov.tax !== undefined) monthsMap[key].tax = Number(ov.tax);
+        });
+
+        const sortedKeys = Object.keys(monthsMap)
+          .filter(k => !monthlyHiddenKeys.includes(k))
+          .sort().reverse();
+
         return sortedKeys.map(key => {
           const item = monthsMap[key];
           const [yearStr, monthStr] = key.split('-');
           const monthIdx = parseInt(monthStr, 10) - 1;
           const monthLabel = `${monthNames[monthIdx] || monthStr} ${yearStr}`;
           const labaKotor = item.revenue - item.hpp;
-          const labaBersih = labaKotor - item.tax;
+          const taxVal = item.tax || (labaKotor > 0 ? labaKotor * 0.02 : 0);
+          const labaBersih = labaKotor - taxVal;
 
           return {
             ...item,
             monthLabel,
             labaKotor,
+            tax: taxVal,
             labaBersih
           };
         });
-      }, [invoices, buktiPembelian]);
+      }, [invoices, buktiPembelian, monthlyOverrides, monthlyHiddenKeys]);
 
       const handleMonthSelect = (monthKey) => {
         setSelectedMonthKey(monthKey);
@@ -8791,6 +8829,41 @@ function RekapLabaRugiModule({ invoices, buktiPembelian, globalSearch, settings,
           setAllocations(JSON.parse(JSON.stringify(targetData.allocations || [])));
           if (showToast) showToast(`Kalkulasi "${targetData.title}" dimuat dalam mode Edit. Perbarui nilai lalu klik "Update Catatan Riwayat".`);
         }
+        else if (actionType === 'delete_month') {
+          const updatedHidden = [...monthlyHiddenKeys, targetData.monthKey];
+          setMonthlyHiddenKeys(updatedHidden);
+          localStorage.setItem('pt_ar_monthly_hidden_keys', JSON.stringify(updatedHidden));
+          if (showToast) showToast(`Riwayat bulan ${targetData.monthLabel} berhasil dihapus dari daftar.`);
+        }
+        else if (actionType === 'edit_month') {
+          setEditMonthModal({
+            isOpen: true,
+            monthKey: targetData.monthKey,
+            monthLabel: targetData.monthLabel,
+            revenue: targetData.revenue,
+            hpp: targetData.hpp,
+            pembelian: targetData.pembelian,
+            tax: targetData.tax
+          });
+        }
+      };
+
+      const handleSaveMonthEdit = (e) => {
+        if (e) e.preventDefault();
+        const { monthKey, monthLabel, revenue, hpp, pembelian, tax } = editMonthModal;
+        const updatedOverrides = {
+          ...monthlyOverrides,
+          [monthKey]: {
+            revenue: Number(revenue || 0),
+            hpp: Number(hpp || 0),
+            pembelian: Number(pembelian || 0),
+            tax: Number(tax || 0)
+          }
+        };
+        setMonthlyOverrides(updatedOverrides);
+        localStorage.setItem('pt_ar_monthly_overrides', JSON.stringify(updatedOverrides));
+        setEditMonthModal({ isOpen: false, monthKey: '', monthLabel: '', revenue: 0, hpp: 0, pembelian: 0, tax: 0 });
+        if (showToast) showToast(`Data riwayat bulan ${monthLabel} berhasil diperbarui.`);
       };
 
       const handleSaveManualHistory = (e) => {
@@ -9796,12 +9869,13 @@ function RekapLabaRugiModule({ invoices, buktiPembelian, globalSearch, settings,
                       <th className="py-3 px-4 text-right">Total Pembelian</th>
                       <th className="py-3 px-4 text-right">Pajak PT (2%)</th>
                       <th className="py-3 px-4 text-right">Laba Bersih</th>
-                      <th className="py-3 px-4 text-center no-print">Aksi Filter</th>
+                      <th className="py-3 px-4 text-center no-print">Aksi (Memerlukan Password)</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-900">
                     {monthlyHistory.map((m) => {
                       const isSelected = selectedMonthKey === m.monthKey;
+                      const isCustomOverridden = !!monthlyOverrides[m.monthKey];
                       return (
                         <tr key={m.monthKey} className={`hover:bg-slate-50/80 dark:hover:bg-slate-900/50 transition-colors ${isSelected ? 'bg-primary-50/40 dark:bg-primary-950/20 font-bold' : ''}`}>
                           <td className="py-3 px-4 font-bold text-slate-800 dark:text-white flex items-center gap-2">
@@ -9809,6 +9883,9 @@ function RekapLabaRugiModule({ invoices, buktiPembelian, globalSearch, settings,
                             {m.monthLabel}
                             {isSelected && (
                               <span className="text-[9px] bg-primary-600 text-white px-2 py-0.5 rounded-full font-semibold">Aktif</span>
+                            )}
+                            {isCustomOverridden && (
+                              <span className="text-[9px] bg-amber-500 text-white px-2 py-0.5 rounded-full font-semibold">Edited</span>
                             )}
                           </td>
                           <td className="py-3 px-4 text-right font-semibold text-primary-600 dark:text-primary-400">
@@ -9830,16 +9907,33 @@ function RekapLabaRugiModule({ invoices, buktiPembelian, globalSearch, settings,
                             {formatRupiah(m.labaBersih)}
                           </td>
                           <td className="py-3 px-4 text-center no-print">
-                            <button
-                              onClick={() => handleMonthSelect(m.monthKey)}
-                              className={`px-3 py-1 rounded-lg text-[10px] font-bold transition-all ${
-                                isSelected
-                                  ? 'bg-primary-600 text-white shadow-sm'
-                                  : 'bg-slate-100 hover:bg-primary-50 hover:text-primary-600 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300'
-                              }`}
-                            >
-                              {isSelected ? 'Tersaring' : 'Lihat Bulan Ini'}
-                            </button>
+                            <div className="flex justify-center items-center gap-1.5">
+                              <button
+                                onClick={() => handleMonthSelect(m.monthKey)}
+                                className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all ${
+                                  isSelected
+                                    ? 'bg-primary-600 text-white shadow-sm'
+                                    : 'bg-slate-100 hover:bg-primary-50 hover:text-primary-600 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300'
+                                }`}
+                                title="Filter tampilan neraca ke bulan ini"
+                              >
+                                {isSelected ? 'Tersaring' : 'Lihat'}
+                              </button>
+                              <button
+                                onClick={() => requestPasswordAuth('edit_month', m)}
+                                className="px-2.5 py-1 bg-amber-50 hover:bg-amber-100 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400 border border-amber-200 dark:border-amber-900 rounded-lg text-[10px] font-bold flex items-center gap-1 active:scale-95 transition-all"
+                                title="Edit Data Bulan Ini (Memerlukan Password)"
+                              >
+                                <i data-lucide="edit-3" className="w-3 h-3"></i> Edit
+                              </button>
+                              <button
+                                onClick={() => requestPasswordAuth('delete_month', m)}
+                                className="px-2.5 py-1 bg-red-50 hover:bg-red-100 text-red-700 dark:bg-red-950/30 dark:text-red-400 border border-red-200 dark:border-red-900 rounded-lg text-[10px] font-bold flex items-center gap-1 active:scale-95 transition-all"
+                                title="Hapus Riwayat Bulan Ini (Memerlukan Password)"
+                              >
+                                <i data-lucide="trash-2" className="w-3 h-3"></i> Hapus
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       );
@@ -9950,6 +10044,108 @@ function RekapLabaRugiModule({ invoices, buktiPembelian, globalSearch, settings,
                       className={`flex-1 ${authModal.actionType === 'delete_history' ? 'bg-red-600 hover:bg-red-700' : 'bg-primary-600 hover:bg-primary-700'} text-white font-bold py-2.5 rounded-xl text-xs shadow-md active:scale-95 transition-all flex items-center justify-center gap-1.5`}
                     >
                       {authModal.isLoading ? 'Verifikasi...' : 'Konfirmasi'}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+
+          {/* Modal Edit Data Bulan */}
+          {editMonthModal.isOpen && (
+            <div className="fixed inset-0 z-[99999] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in no-print">
+              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
+                <div className="flex items-center justify-between border-b pb-3 border-slate-100 dark:border-slate-800">
+                  <div className="flex items-center gap-2">
+                    <div className="p-2 bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 rounded-xl">
+                      <i data-lucide="edit-3" className="w-5 h-5"></i>
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-sm text-slate-800 dark:text-white">Edit Riwayat Laba Rugi</h4>
+                      <span className="text-[10px] text-slate-400 font-medium">{editMonthModal.monthLabel}</span>
+                    </div>
+                  </div>
+                  <button 
+                    onClick={() => setEditMonthModal({ isOpen: false, monthKey: '', monthLabel: '', revenue: 0, hpp: 0, pembelian: 0, tax: 0 })}
+                    className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1"
+                  >
+                    <i data-lucide="x" className="w-4 h-4"></i>
+                  </button>
+                </div>
+
+                <form onSubmit={handleSaveMonthEdit} className="space-y-3 text-xs font-semibold">
+                  <div>
+                    <label className="block text-[10px] text-slate-400 uppercase tracking-wide mb-1">Pendapatan Penjualan (Rp)</label>
+                    <input 
+                      type="number" 
+                      value={editMonthModal.revenue} 
+                      onChange={(e) => setEditMonthModal(prev => ({ ...prev, revenue: e.target.value }))}
+                      className="w-full bg-slate-50 dark:bg-slate-955 border border-slate-200 dark:border-slate-800 px-3 py-2 rounded-xl text-slate-800 dark:text-white font-mono"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] text-slate-400 uppercase tracking-wide mb-1">Harga Pokok Penjualan HPP (Rp)</label>
+                    <input 
+                      type="number" 
+                      value={editMonthModal.hpp} 
+                      onChange={(e) => setEditMonthModal(prev => ({ ...prev, hpp: e.target.value }))}
+                      className="w-full bg-slate-50 dark:bg-slate-955 border border-slate-200 dark:border-slate-800 px-3 py-2 rounded-xl text-slate-800 dark:text-white font-mono"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] text-slate-400 uppercase tracking-wide mb-1">Total Pembelian / Modal (Rp)</label>
+                    <input 
+                      type="number" 
+                      value={editMonthModal.pembelian} 
+                      onChange={(e) => setEditMonthModal(prev => ({ ...prev, pembelian: e.target.value }))}
+                      className="w-full bg-slate-50 dark:bg-slate-955 border border-slate-200 dark:border-slate-800 px-3 py-2 rounded-xl text-slate-800 dark:text-white font-mono"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] text-slate-400 uppercase tracking-wide mb-1">Pajak PT (2%) (Rp)</label>
+                    <input 
+                      type="number" 
+                      value={editMonthModal.tax} 
+                      onChange={(e) => setEditMonthModal(prev => ({ ...prev, tax: e.target.value }))}
+                      className="w-full bg-slate-50 dark:bg-slate-955 border border-slate-200 dark:border-slate-800 px-3 py-2 rounded-xl text-amber-600 font-mono"
+                    />
+                  </div>
+
+                  <div className="bg-slate-50 dark:bg-slate-955/60 p-3 rounded-xl border border-slate-100 dark:border-slate-800 space-y-1 text-[11px] font-bold">
+                    <div className="flex justify-between">
+                      <span className="text-slate-400">Estimasi Laba Kotor:</span>
+                      <span className="text-slate-800 dark:text-white">{formatRupiah(Number(editMonthModal.revenue || 0) - Number(editMonthModal.hpp || 0))}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-400">Estimasi Laba Bersih:</span>
+                      <span className="text-green-600">{formatRupiah((Number(editMonthModal.revenue || 0) - Number(editMonthModal.hpp || 0)) - Number(editMonthModal.tax || 0))}</span>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-2 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const updated = { ...monthlyOverrides };
+                        delete updated[editMonthModal.monthKey];
+                        setMonthlyOverrides(updated);
+                        localStorage.setItem('pt_ar_monthly_overrides', JSON.stringify(updated));
+                        setEditMonthModal({ isOpen: false, monthKey: '', monthLabel: '', revenue: 0, hpp: 0, pembelian: 0, tax: 0 });
+                        if (showToast) showToast(`Data bulan ${editMonthModal.monthLabel} dikembalikan ke data asli.`);
+                      }}
+                      className="px-3 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-bold"
+                      title="Hapus kustomisasi dan reset ke kalkulasi data transaksi asli"
+                    >
+                      Reset Asli
+                    </button>
+                    <button
+                      type="submit"
+                      className="flex-1 bg-primary-600 hover:bg-primary-700 text-white font-bold py-2.5 rounded-xl text-xs shadow-md active:scale-95 transition-all"
+                    >
+                      Simpan Perubahan
                     </button>
                   </div>
                 </form>
