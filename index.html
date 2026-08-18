@@ -8704,6 +8704,60 @@ function RekapLabaRugiModule({ invoices, buktiPembelian, globalSearch, settings,
       const [newAllocType, setNewAllocType] = React.useState('rp'); // 'rp' or 'percent'
       const [newAllocValue, setNewAllocValue] = React.useState('');
 
+      // Saved History for Manual Calculator
+      const [manualHistory, setManualHistory] = React.useState(() => JSON.parse(localStorage.getItem('pt_ar_manual_saved_history') || '[]'));
+      const [manualRecordTitle, setManualRecordTitle] = React.useState('');
+
+      const handleSaveManualHistory = (e) => {
+        if (e) e.preventDefault();
+        if (manualBaseProfit === 0 && allocations.length === 0) {
+          alert("Silakan masukkan Profit Acuan atau tambah alokasi terlebih dahulu!");
+          return;
+        }
+        const now = new Date();
+        const dateStr = now.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+        const timeStr = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+        const defaultTitle = `Kalkulasi Laba ${dateStr}`;
+        const title = manualRecordTitle.trim() || defaultTitle;
+
+        const totalAllocated = allocations.reduce((sum, a) => sum + (a.type === 'percent' ? (manualBaseProfit * (a.value / 100)) : a.value), 0);
+        const remaining = manualBaseProfit - totalAllocated;
+
+        const newEntry = {
+          id: Date.now(),
+          title,
+          savedAt: `${dateStr} pukul ${timeStr}`,
+          manualBaseProfit,
+          allocations: JSON.parse(JSON.stringify(allocations)),
+          totalAllocated,
+          remaining
+        };
+
+        const updated = [newEntry, ...manualHistory];
+        setManualHistory(updated);
+        localStorage.setItem('pt_ar_manual_saved_history', JSON.stringify(updated));
+        setManualRecordTitle('');
+        if (showToast) showToast(`Kalkulasi "${title}" berhasil disimpan ke riwayat!`);
+      };
+
+      const handleLoadManualHistory = (entry) => {
+        if (confirm(`Muat kembali kalkulasi "${entry.title}"? Data kalkulasi manual di layar saat ini akan digantikan.`)) {
+          setManualBaseProfit(entry.manualBaseProfit);
+          setManualBaseProfitInput(entry.manualBaseProfit === 0 ? '' : new Intl.NumberFormat('id-ID').format(entry.manualBaseProfit));
+          setAllocations(entry.allocations || []);
+          if (showToast) showToast(`Kalkulasi "${entry.title}" berhasil dimuat.`);
+        }
+      };
+
+      const handleDeleteManualHistory = (id) => {
+        if (confirm("Hapus catatan riwayat kalkulasi ini?")) {
+          const updated = manualHistory.filter(h => h.id !== id);
+          setManualHistory(updated);
+          localStorage.setItem('pt_ar_manual_saved_history', JSON.stringify(updated));
+          if (showToast) showToast("Catatan riwayat berhasil dihapus.");
+        }
+      };
+
       const handleManualBaseProfitChange = (valStr) => {
         const cleanDigits = valStr.replace(/\D/g, '');
         const cleanNum = cleanDigits ? Number(cleanDigits) : 0;
@@ -8724,7 +8778,7 @@ function RekapLabaRugiModule({ invoices, buktiPembelian, globalSearch, settings,
         if (window.lucide) {
           window.lucide.createIcons();
         }
-      }, [labaRugiMode, allocations, selectedMonthKey]);
+      }, [labaRugiMode, allocations, selectedMonthKey, manualHistory]);
 
       const handleAddAllocation = (e) => {
         e.preventDefault();
@@ -9474,12 +9528,113 @@ function RekapLabaRugiModule({ invoices, buktiPembelian, globalSearch, settings,
                             <div className="bg-slate-50 dark:bg-slate-900/60 p-3.5 rounded-xl border border-slate-100 dark:border-slate-850 text-[10px] leading-relaxed text-slate-450 dark:text-slate-400 mt-2 font-medium">
                               Sisa Laba Bersih Akhir adalah profit acuan dikurangi seluruh alokasi kegunaan flat dan persentase yang Anda tambahkan.
                             </div>
+
+                            {/* Form Simpan ke Riwayat */}
+                            <div className="pt-4 border-t border-slate-100 dark:border-slate-900 space-y-3 no-print">
+                              <label className="block text-[10px] text-slate-400 uppercase tracking-wide">Nama / Periode Catatan (Opsional)</label>
+                              <input 
+                                type="text" 
+                                placeholder="Contoh: Laba Bulan Agustus 2026"
+                                value={manualRecordTitle}
+                                onChange={(e) => setManualRecordTitle(e.target.value)}
+                                className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-3 py-2 rounded-xl text-xs font-semibold focus:border-primary-500 focus:outline-none dark:text-white"
+                              />
+                              <button
+                                type="button"
+                                onClick={handleSaveManualHistory}
+                                className="w-full bg-primary-600 hover:bg-primary-700 text-white font-bold py-2.5 rounded-xl shadow-md shadow-primary-950/15 flex items-center justify-center gap-2 active:scale-95 transition-all text-xs"
+                              >
+                                <i data-lucide="bookmark" className="w-4 h-4"></i> Simpan Ke Riwayat Manual
+                              </button>
+                            </div>
                           </>
                         );
                       })()}
                     </div>
                   </div>
                 </div>
+              </div>
+
+              {/* Card Riwayat Kalkulasi Manual Ter-Simpan */}
+              <div className="bg-white dark:bg-slate-955 p-6 rounded-2xl border border-slate-150 dark:border-slate-850 shadow-sm space-y-4 no-print mt-6">
+                <div className="flex justify-between items-center flex-wrap gap-4 border-b pb-3 border-slate-100 dark:border-slate-900">
+                  <div>
+                    <h4 className="font-bold text-xs uppercase tracking-wider text-slate-700 dark:text-slate-200 flex items-center gap-2">
+                      <i data-lucide="history" className="w-4 h-4 text-primary-500"></i> Riwayat Kalkulasi Manual Ter-Simpan
+                    </h4>
+                    <span className="text-[10px] text-slate-400 font-medium block mt-0.5">
+                      Daftar hasil perhitungan kalkulator manasuka yang pernah Anda simpan
+                    </span>
+                  </div>
+                  <span className="text-[10px] bg-primary-50 dark:bg-primary-950/30 text-primary-600 dark:text-primary-400 font-bold px-3 py-1 rounded-full border border-primary-100 dark:border-primary-900">
+                    {manualHistory.length} Catatan Tersimpan
+                  </span>
+                </div>
+
+                {manualHistory.length === 0 ? (
+                  <div className="text-center py-8 text-slate-400 text-xs italic">
+                    Belum ada catatan kalkulasi manual yang disimpan. Isikan kalkulator di atas lalu klik "Simpan Ke Riwayat Manual".
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-xs border-collapse">
+                      <thead>
+                        <tr className="bg-slate-50 dark:bg-slate-900 text-slate-500 uppercase tracking-wider text-[10px] border-b border-slate-150 dark:border-slate-850">
+                          <th className="py-3 px-4">Judul Catatan / Periode</th>
+                          <th className="py-3 px-4">Waktu Simpan</th>
+                          <th className="py-3 px-4 text-right">Profit Acuan</th>
+                          <th className="py-3 px-4 text-center">Jumlah Alokasi</th>
+                          <th className="py-3 px-4 text-right">Total Alokasi</th>
+                          <th className="py-3 px-4 text-right">Sisa Laba Bersih</th>
+                          <th className="py-3 px-4 text-center">Aksi</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 dark:divide-slate-900">
+                        {manualHistory.map((h) => (
+                          <tr key={h.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-900/50 transition-colors">
+                            <td className="py-3 px-4 font-bold text-slate-800 dark:text-white flex items-center gap-2">
+                              <i data-lucide="file-text" className="w-3.5 h-3.5 text-primary-500"></i>
+                              {h.title}
+                            </td>
+                            <td className="py-3 px-4 text-slate-400 text-[10px]">{h.savedAt}</td>
+                            <td className="py-3 px-4 text-right font-extrabold text-slate-800 dark:text-white">
+                              {formatRupiah(h.manualBaseProfit)}
+                            </td>
+                            <td className="py-3 px-4 text-center">
+                              <span className="bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full text-[10px] font-bold text-slate-600 dark:text-slate-300">
+                                {(h.allocations || []).length} Alokasi
+                              </span>
+                            </td>
+                            <td className="py-3 px-4 text-right font-semibold text-red-500">
+                              -{formatRupiah(h.totalAllocated)}
+                            </td>
+                            <td className={`py-3 px-4 text-right font-extrabold ${h.remaining >= 0 ? 'text-green-600' : 'text-red-500'}`}>
+                              {formatRupiah(h.remaining)}
+                            </td>
+                            <td className="py-3 px-4 text-center">
+                              <div className="flex justify-center gap-1.5">
+                                <button
+                                  onClick={() => handleLoadManualHistory(h)}
+                                  className="px-2.5 py-1 bg-primary-50 hover:bg-primary-100 text-primary-700 dark:bg-primary-950/20 dark:text-primary-400 rounded-lg text-[10px] font-bold flex items-center gap-1 active:scale-95 transition-all"
+                                  title="Muat kembali kalkulasi ini ke layar"
+                                >
+                                  <i data-lucide="download" className="w-3 h-3"></i> Muat
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteManualHistory(h.id)}
+                                  className="p-1 bg-red-50 hover:bg-red-100 text-red-600 dark:bg-red-950/20 dark:text-red-400 rounded-lg active:scale-95 transition-all"
+                                  title="Hapus Catatan"
+                                >
+                                  <i data-lucide="trash-2" className="w-3.5 h-3.5"></i>
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </div>
             </div>
           )}
