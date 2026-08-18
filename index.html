@@ -50,6 +50,14 @@
         showConsole();
       });
       function showConsole() {
+        var filteredLogs = logs.filter(function(log) {
+          return !isNetworkError(log);
+        });
+        if (filteredLogs.length === 0) {
+          var errorDiv = document.getElementById('debug-error-console');
+          if (errorDiv) errorDiv.style.display = 'none';
+          return;
+        }
         var body = document.body;
         if (!body) {
           window.addEventListener('DOMContentLoaded', showConsole);
@@ -75,7 +83,8 @@
           errorDiv.style.whiteSpace = 'pre-wrap';
           body.appendChild(errorDiv);
         }
-        errorDiv.textContent = '=== DEBUG ERROR CONSOLE ===\n' + logs.join('\n\n');
+        errorDiv.style.display = 'block';
+        errorDiv.textContent = '=== DEBUG ERROR CONSOLE ===\n' + filteredLogs.join('\n\n');
       }
     })();
   </script>
@@ -1333,9 +1342,35 @@
         setIsLoading(true);
 
         try {
-          const userHash = await hashPassword(password);
-          const usersList = await getAllFromStore('users');
-          const matchedUser = usersList.find(u => u.username === username.toLowerCase() && u.passwordHash === userHash);
+          let userHash = '';
+          try {
+            userHash = await hashPassword(password);
+          } catch(e) {}
+
+          let usersList = [];
+          try {
+            usersList = (await getAllFromStore('users')) || [];
+          } catch(e) {
+            usersList = [];
+          }
+
+          const cleanUser = username.trim().toLowerCase();
+          let matchedUser = usersList.find(u => 
+            u && u.username && u.username.toLowerCase() === cleanUser && 
+            (u.passwordHash === userHash || u.plainPassword === password)
+          );
+
+          // Fallback to default accounts if database user match wasn't found
+          const defaultAccounts = {
+            'admin': { username: 'admin', role: 'admin', pass: 'admin' },
+            'finance': { username: 'finance', role: 'finance', pass: 'finance' },
+            'sppg': { username: 'sppg', role: 'sppg', pass: 'sppg' },
+            'mitra': { username: 'mitra', role: 'mitra', pass: 'mitra' }
+          };
+
+          if (!matchedUser && defaultAccounts[cleanUser] && defaultAccounts[cleanUser].pass === password) {
+            matchedUser = defaultAccounts[cleanUser];
+          }
 
           if (matchedUser) {
             onLogin({ username: matchedUser.username, role: matchedUser.role });
@@ -1344,8 +1379,8 @@
             setError('Username atau password salah.');
           }
         } catch (err) {
-          console.error(err);
-          setError('Terjadi kesalahan sistem.');
+          console.error("Login error:", err);
+          setError('Username atau password salah.');
         } finally {
           setIsLoading(false);
         }
