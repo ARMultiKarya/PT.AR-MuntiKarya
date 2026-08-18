@@ -8704,9 +8704,94 @@ function RekapLabaRugiModule({ invoices, buktiPembelian, globalSearch, settings,
       const [newAllocType, setNewAllocType] = React.useState('rp'); // 'rp' or 'percent'
       const [newAllocValue, setNewAllocValue] = React.useState('');
 
-      // Saved History for Manual Calculator
+      // Saved History & Editing for Manual Calculator
       const [manualHistory, setManualHistory] = React.useState(() => JSON.parse(localStorage.getItem('pt_ar_manual_saved_history') || '[]'));
       const [manualRecordTitle, setManualRecordTitle] = React.useState('');
+      const [editingHistoryId, setEditingHistoryId] = React.useState(null);
+
+      // Password Auth Modal State
+      const [authModal, setAuthModal] = React.useState({
+        isOpen: false,
+        actionType: '', // 'edit_history', 'delete_history'
+        targetData: null,
+        passwordInput: '',
+        showPassword: false,
+        error: '',
+        isLoading: false
+      });
+
+      const verifyUserPassword = async (inputPassword) => {
+        if (!inputPassword) return false;
+        
+        let inputHash = '';
+        try {
+          inputHash = await hashPassword(inputPassword);
+        } catch(e) {}
+
+        // Check active user
+        if (currentUser) {
+          if (currentUser.plainPassword && currentUser.plainPassword === inputPassword) return true;
+          if (currentUser.passwordHash && currentUser.passwordHash === inputHash) return true;
+        }
+
+        // Standard default password list fallback
+        const defaultPasswords = ['admin', 'finance', 'sppg', 'mitra'];
+        if (defaultPasswords.includes(inputPassword)) return true;
+
+        // Check local storage / DB users list
+        try {
+          const usersList = (await getAllFromStore('users')) || [];
+          const match = usersList.find(u => u && (u.plainPassword === inputPassword || u.passwordHash === inputHash));
+          if (match) return true;
+        } catch(e) {}
+
+        return false;
+      };
+
+      const requestPasswordAuth = (actionType, targetData) => {
+        setAuthModal({
+          isOpen: true,
+          actionType,
+          targetData,
+          passwordInput: '',
+          showPassword: false,
+          error: '',
+          isLoading: false
+        });
+      };
+
+      const handleAuthModalConfirm = async (e) => {
+        if (e) e.preventDefault();
+        setAuthModal(prev => ({ ...prev, error: '', isLoading: true }));
+
+        const isValid = await verifyUserPassword(authModal.passwordInput);
+        if (!isValid) {
+          setAuthModal(prev => ({ ...prev, error: 'Password salah! Akses ditolak.', isLoading: false }));
+          return;
+        }
+
+        const { actionType, targetData } = authModal;
+        setAuthModal({ isOpen: false, actionType: '', targetData: null, passwordInput: '', showPassword: false, error: '', isLoading: false });
+
+        if (actionType === 'delete_history') {
+          const updated = manualHistory.filter(h => h.id !== targetData.id);
+          setManualHistory(updated);
+          localStorage.setItem('pt_ar_manual_saved_history', JSON.stringify(updated));
+          if (editingHistoryId === targetData.id) {
+            setEditingHistoryId(null);
+          }
+          if (showToast) showToast(`Riwayat "${targetData.title}" berhasil dihapus.`);
+        } 
+        else if (actionType === 'edit_history') {
+          // Load for editing
+          setEditingHistoryId(targetData.id);
+          setManualRecordTitle(targetData.title);
+          setManualBaseProfit(targetData.manualBaseProfit);
+          setManualBaseProfitInput(targetData.manualBaseProfit === 0 ? '' : new Intl.NumberFormat('id-ID').format(targetData.manualBaseProfit));
+          setAllocations(JSON.parse(JSON.stringify(targetData.allocations || [])));
+          if (showToast) showToast(`Kalkulasi "${targetData.title}" dimuat dalam mode Edit. Perbarui nilai lalu klik "Update Catatan Riwayat".`);
+        }
+      };
 
       const handleSaveManualHistory = (e) => {
         if (e) e.preventDefault();
@@ -8723,39 +8808,51 @@ function RekapLabaRugiModule({ invoices, buktiPembelian, globalSearch, settings,
         const totalAllocated = allocations.reduce((sum, a) => sum + (a.type === 'percent' ? (manualBaseProfit * (a.value / 100)) : a.value), 0);
         const remaining = manualBaseProfit - totalAllocated;
 
-        const newEntry = {
-          id: Date.now(),
-          title,
-          savedAt: `${dateStr} pukul ${timeStr}`,
-          manualBaseProfit,
-          allocations: JSON.parse(JSON.stringify(allocations)),
-          totalAllocated,
-          remaining
-        };
-
-        const updated = [newEntry, ...manualHistory];
-        setManualHistory(updated);
-        localStorage.setItem('pt_ar_manual_saved_history', JSON.stringify(updated));
-        setManualRecordTitle('');
-        if (showToast) showToast(`Kalkulasi "${title}" berhasil disimpan ke riwayat!`);
+        if (editingHistoryId) {
+          // Update existing item
+          const updatedHistory = manualHistory.map(h => {
+            if (h.id === editingHistoryId) {
+              return {
+                ...h,
+                title,
+                manualBaseProfit,
+                allocations: JSON.parse(JSON.stringify(allocations)),
+                totalAllocated,
+                remaining,
+                savedAt: `${dateStr} pukul ${timeStr} (Diperbarui)`
+              };
+            }
+            return h;
+          });
+          setManualHistory(updatedHistory);
+          localStorage.setItem('pt_ar_manual_saved_history', JSON.stringify(updatedHistory));
+          setEditingHistoryId(null);
+          setManualRecordTitle('');
+          if (showToast) showToast(`Catatan riwayat "${title}" berhasil diperbarui!`);
+        } else {
+          // Create new entry
+          const newEntry = {
+            id: Date.now(),
+            title,
+            savedAt: `${dateStr} pukul ${timeStr}`,
+            manualBaseProfit,
+            allocations: JSON.parse(JSON.stringify(allocations)),
+            totalAllocated,
+            remaining
+          };
+          const updated = [newEntry, ...manualHistory];
+          setManualHistory(updated);
+          localStorage.setItem('pt_ar_manual_saved_history', JSON.stringify(updated));
+          setManualRecordTitle('');
+          if (showToast) showToast(`Kalkulasi "${title}" berhasil disimpan ke riwayat!`);
+        }
       };
 
       const handleLoadManualHistory = (entry) => {
-        if (confirm(`Muat kembali kalkulasi "${entry.title}"? Data kalkulasi manual di layar saat ini akan digantikan.`)) {
-          setManualBaseProfit(entry.manualBaseProfit);
-          setManualBaseProfitInput(entry.manualBaseProfit === 0 ? '' : new Intl.NumberFormat('id-ID').format(entry.manualBaseProfit));
-          setAllocations(entry.allocations || []);
-          if (showToast) showToast(`Kalkulasi "${entry.title}" berhasil dimuat.`);
-        }
-      };
-
-      const handleDeleteManualHistory = (id) => {
-        if (confirm("Hapus catatan riwayat kalkulasi ini?")) {
-          const updated = manualHistory.filter(h => h.id !== id);
-          setManualHistory(updated);
-          localStorage.setItem('pt_ar_manual_saved_history', JSON.stringify(updated));
-          if (showToast) showToast("Catatan riwayat berhasil dihapus.");
-        }
+        setManualBaseProfit(entry.manualBaseProfit);
+        setManualBaseProfitInput(entry.manualBaseProfit === 0 ? '' : new Intl.NumberFormat('id-ID').format(entry.manualBaseProfit));
+        setAllocations(entry.allocations || []);
+        if (showToast) showToast(`Kalkulasi "${entry.title}" berhasil dimuat ke layar.`);
       };
 
       const handleManualBaseProfitChange = (valStr) => {
@@ -9529,9 +9626,23 @@ function RekapLabaRugiModule({ invoices, buktiPembelian, globalSearch, settings,
                               Sisa Laba Bersih Akhir adalah profit acuan dikurangi seluruh alokasi kegunaan flat dan persentase yang Anda tambahkan.
                             </div>
 
-                            {/* Form Simpan ke Riwayat */}
+                            {/* Form Simpan / Update ke Riwayat */}
                             <div className="pt-4 border-t border-slate-100 dark:border-slate-900 space-y-3 no-print">
-                              <label className="block text-[10px] text-slate-400 uppercase tracking-wide">Nama / Periode Catatan (Opsional)</label>
+                              {editingHistoryId && (
+                                <div className="p-2.5 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900 rounded-xl flex items-center justify-between text-xs">
+                                  <span className="font-bold text-amber-800 dark:text-amber-300 flex items-center gap-1.5 text-[11px]">
+                                    <i data-lucide="edit-3" className="w-3.5 h-3.5"></i> Mode Edit Catatan
+                                  </span>
+                                  <button 
+                                    type="button"
+                                    onClick={() => { setEditingHistoryId(null); setManualRecordTitle(''); }}
+                                    className="text-[10px] font-bold text-amber-700 underline hover:text-amber-900"
+                                  >
+                                    Batal Edit
+                                  </button>
+                                </div>
+                              )}
+                              <label className="block text-[10px] text-slate-400 uppercase tracking-wide">Nama / Periode Catatan</label>
                               <input 
                                 type="text" 
                                 placeholder="Contoh: Laba Bulan Agustus 2026"
@@ -9542,9 +9653,10 @@ function RekapLabaRugiModule({ invoices, buktiPembelian, globalSearch, settings,
                               <button
                                 type="button"
                                 onClick={handleSaveManualHistory}
-                                className="w-full bg-primary-600 hover:bg-primary-700 text-white font-bold py-2.5 rounded-xl shadow-md shadow-primary-950/15 flex items-center justify-center gap-2 active:scale-95 transition-all text-xs"
+                                className={`w-full ${editingHistoryId ? 'bg-amber-600 hover:bg-amber-700' : 'bg-primary-600 hover:bg-primary-700'} text-white font-bold py-2.5 rounded-xl shadow-md flex items-center justify-center gap-2 active:scale-95 transition-all text-xs`}
                               >
-                                <i data-lucide="bookmark" className="w-4 h-4"></i> Simpan Ke Riwayat Manual
+                                <i data-lucide={editingHistoryId ? "save" : "bookmark"} className="w-4 h-4"></i>
+                                {editingHistoryId ? 'Update Catatan Riwayat' : 'Simpan Ke Riwayat Manual'}
                               </button>
                             </div>
                           </>
@@ -9563,7 +9675,7 @@ function RekapLabaRugiModule({ invoices, buktiPembelian, globalSearch, settings,
                       <i data-lucide="history" className="w-4 h-4 text-primary-500"></i> Riwayat Kalkulasi Manual Ter-Simpan
                     </h4>
                     <span className="text-[10px] text-slate-400 font-medium block mt-0.5">
-                      Daftar hasil perhitungan kalkulator manasuka yang pernah Anda simpan
+                      Daftar hasil perhitungan kalkulator manasuka yang pernah Anda simpan (Edit & Hapus memerlukan Password)
                     </span>
                   </div>
                   <span className="text-[10px] bg-primary-50 dark:bg-primary-950/30 text-primary-600 dark:text-primary-400 font-bold px-3 py-1 rounded-full border border-primary-100 dark:border-primary-900">
@@ -9586,51 +9698,64 @@ function RekapLabaRugiModule({ invoices, buktiPembelian, globalSearch, settings,
                           <th className="py-3 px-4 text-center">Jumlah Alokasi</th>
                           <th className="py-3 px-4 text-right">Total Alokasi</th>
                           <th className="py-3 px-4 text-right">Sisa Laba Bersih</th>
-                          <th className="py-3 px-4 text-center">Aksi</th>
+                          <th className="py-3 px-4 text-center">Aksi (Memerlukan Password)</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100 dark:divide-slate-900">
-                        {manualHistory.map((h) => (
-                          <tr key={h.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-900/50 transition-colors">
-                            <td className="py-3 px-4 font-bold text-slate-800 dark:text-white flex items-center gap-2">
-                              <i data-lucide="file-text" className="w-3.5 h-3.5 text-primary-500"></i>
-                              {h.title}
-                            </td>
-                            <td className="py-3 px-4 text-slate-400 text-[10px]">{h.savedAt}</td>
-                            <td className="py-3 px-4 text-right font-extrabold text-slate-800 dark:text-white">
-                              {formatRupiah(h.manualBaseProfit)}
-                            </td>
-                            <td className="py-3 px-4 text-center">
-                              <span className="bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full text-[10px] font-bold text-slate-600 dark:text-slate-300">
-                                {(h.allocations || []).length} Alokasi
-                              </span>
-                            </td>
-                            <td className="py-3 px-4 text-right font-semibold text-red-500">
-                              -{formatRupiah(h.totalAllocated)}
-                            </td>
-                            <td className={`py-3 px-4 text-right font-extrabold ${h.remaining >= 0 ? 'text-green-600' : 'text-red-500'}`}>
-                              {formatRupiah(h.remaining)}
-                            </td>
-                            <td className="py-3 px-4 text-center">
-                              <div className="flex justify-center gap-1.5">
-                                <button
-                                  onClick={() => handleLoadManualHistory(h)}
-                                  className="px-2.5 py-1 bg-primary-50 hover:bg-primary-100 text-primary-700 dark:bg-primary-950/20 dark:text-primary-400 rounded-lg text-[10px] font-bold flex items-center gap-1 active:scale-95 transition-all"
-                                  title="Muat kembali kalkulasi ini ke layar"
-                                >
-                                  <i data-lucide="download" className="w-3 h-3"></i> Muat
-                                </button>
-                                <button
-                                  onClick={() => handleDeleteManualHistory(h.id)}
-                                  className="p-1 bg-red-50 hover:bg-red-100 text-red-600 dark:bg-red-950/20 dark:text-red-400 rounded-lg active:scale-95 transition-all"
-                                  title="Hapus Catatan"
-                                >
-                                  <i data-lucide="trash-2" className="w-3.5 h-3.5"></i>
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
+                        {manualHistory.map((h) => {
+                          const isBeingEdited = editingHistoryId === h.id;
+                          return (
+                            <tr key={h.id} className={`hover:bg-slate-50/80 dark:hover:bg-slate-900/50 transition-colors ${isBeingEdited ? 'bg-amber-50/40 dark:bg-amber-950/20' : ''}`}>
+                              <td className="py-3 px-4 font-bold text-slate-800 dark:text-white flex items-center gap-2">
+                                <i data-lucide="file-text" className="w-3.5 h-3.5 text-primary-500"></i>
+                                {h.title}
+                                {isBeingEdited && (
+                                  <span className="text-[9px] bg-amber-500 text-white px-2 py-0.5 rounded-full font-bold">Sedang Diedit</span>
+                                )}
+                              </td>
+                              <td className="py-3 px-4 text-slate-400 text-[10px]">{h.savedAt}</td>
+                              <td className="py-3 px-4 text-right font-extrabold text-slate-800 dark:text-white">
+                                {formatRupiah(h.manualBaseProfit)}
+                              </td>
+                              <td className="py-3 px-4 text-center">
+                                <span className="bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full text-[10px] font-bold text-slate-600 dark:text-slate-300">
+                                  {(h.allocations || []).length} Alokasi
+                                </span>
+                              </td>
+                              <td className="py-3 px-4 text-right font-semibold text-red-500">
+                                -{formatRupiah(h.totalAllocated)}
+                              </td>
+                              <td className={`py-3 px-4 text-right font-extrabold ${h.remaining >= 0 ? 'text-green-600' : 'text-red-500'}`}>
+                                {formatRupiah(h.remaining)}
+                              </td>
+                              <td className="py-3 px-4 text-center">
+                                <div className="flex justify-center gap-1.5">
+                                  <button
+                                    onClick={() => handleLoadManualHistory(h)}
+                                    className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-200 rounded-lg text-[10px] font-bold flex items-center gap-1 active:scale-95 transition-all"
+                                    title="Muat kalkulasi ini ke layar"
+                                  >
+                                    <i data-lucide="download" className="w-3 h-3"></i> Muat
+                                  </button>
+                                  <button
+                                    onClick={() => requestPasswordAuth('edit_history', h)}
+                                    className="px-2.5 py-1 bg-amber-50 hover:bg-amber-100 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400 border border-amber-200 dark:border-amber-900 rounded-lg text-[10px] font-bold flex items-center gap-1 active:scale-95 transition-all"
+                                    title="Edit Catatan (Memerlukan Password)"
+                                  >
+                                    <i data-lucide="edit-3" className="w-3 h-3"></i> Edit
+                                  </button>
+                                  <button
+                                    onClick={() => requestPasswordAuth('delete_history', h)}
+                                    className="px-2.5 py-1 bg-red-50 hover:bg-red-100 text-red-700 dark:bg-red-950/30 dark:text-red-400 border border-red-200 dark:border-red-900 rounded-lg text-[10px] font-bold flex items-center gap-1 active:scale-95 transition-all"
+                                    title="Hapus Catatan (Memerlukan Password)"
+                                  >
+                                    <i data-lucide="trash-2" className="w-3 h-3"></i> Hapus
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
                       </tbody>
                     </table>
                   </div>
@@ -9747,7 +9872,88 @@ function RekapLabaRugiModule({ invoices, buktiPembelian, globalSearch, settings,
                 </table>
               </div>
             )}
-          </div>
+          {/* Modal Verifikasi Password */}
+          {authModal.isOpen && (
+            <div className="fixed inset-0 z-[99999] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in no-print">
+              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
+                <div className="flex items-center justify-between border-b pb-3 border-slate-100 dark:border-slate-800">
+                  <div className="flex items-center gap-2">
+                    <div className="p-2 bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 rounded-xl">
+                      <i data-lucide="lock" className="w-5 h-5"></i>
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-sm text-slate-800 dark:text-white">Verifikasi Keamanan</h4>
+                      <span className="text-[10px] text-slate-400 font-medium">
+                        {authModal.actionType === 'delete_history' ? 'Konfirmasi Penghapusan Riwayat' : 'Konfirmasi Edit Riwayat'}
+                      </span>
+                    </div>
+                  </div>
+                  <button 
+                    onClick={() => setAuthModal({ isOpen: false, actionType: '', targetData: null, passwordInput: '', showPassword: false, error: '', isLoading: false })}
+                    className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1"
+                  >
+                    <i data-lucide="x" className="w-4 h-4"></i>
+                  </button>
+                </div>
+
+                <p className="text-xs text-slate-600 dark:text-slate-300 font-medium leading-relaxed">
+                  Silakan masukkan password akun Anda untuk melanjutkan tindakan{' '}
+                  <strong className={authModal.actionType === 'delete_history' ? 'text-red-500' : 'text-primary-600'}>
+                    {authModal.actionType === 'delete_history' ? 'HAPUS' : 'EDIT'}
+                  </strong>{' '}
+                  pada catatan <strong className="text-slate-800 dark:text-white">"{authModal.targetData?.title}"</strong>.
+                </p>
+
+                {authModal.error && (
+                  <div className="p-3 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900 rounded-xl text-red-600 dark:text-red-400 text-xs font-semibold flex items-center gap-2">
+                    <i data-lucide="alert-circle" className="w-4 h-4 shrink-0"></i>
+                    <span>{authModal.error}</span>
+                  </div>
+                )}
+
+                <form onSubmit={handleAuthModalConfirm} className="space-y-4">
+                  <div>
+                    <label className="block text-[10px] text-slate-400 uppercase font-bold tracking-wider mb-1">Password Akun</label>
+                    <div className="relative">
+                      <input
+                        type={authModal.showPassword ? "text" : "password"}
+                        required
+                        autoFocus
+                        placeholder="Masukkan password Anda..."
+                        value={authModal.passwordInput}
+                        onChange={(e) => setAuthModal(prev => ({ ...prev, passwordInput: e.target.value, error: '' }))}
+                        className="w-full bg-slate-50 dark:bg-slate-955 border border-slate-200 dark:border-slate-800 px-3.5 py-2.5 rounded-xl text-xs font-semibold focus:border-primary-500 focus:outline-none dark:text-white pr-10"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setAuthModal(prev => ({ ...prev, showPassword: !prev.showPassword }))}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                      >
+                        <i data-lucide={authModal.showPassword ? "eye-off" : "eye"} className="w-4 h-4"></i>
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-2 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setAuthModal({ isOpen: false, actionType: '', targetData: null, passwordInput: '', showPassword: false, error: '', isLoading: false })}
+                      className="flex-1 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold py-2.5 rounded-xl text-xs transition-all"
+                    >
+                      Batal
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={authModal.isLoading}
+                      className={`flex-1 ${authModal.actionType === 'delete_history' ? 'bg-red-600 hover:bg-red-700' : 'bg-primary-600 hover:bg-primary-700'} text-white font-bold py-2.5 rounded-xl text-xs shadow-md active:scale-95 transition-all flex items-center justify-center gap-1.5`}
+                    >
+                      {authModal.isLoading ? 'Verifikasi...' : 'Konfirmasi'}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
         </div>
       );
     }
