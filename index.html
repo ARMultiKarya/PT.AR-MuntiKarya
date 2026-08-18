@@ -8815,6 +8815,19 @@ function RekapLabaRugiModule({ invoices, buktiPembelian, globalSearch, settings,
         }
 
         return `Laba Periode (${startFormatted} s/d ${endFormatted}) PERIODE ${periodNum}`;
+      const detectMonthKey = (itemTitle = '', startDate = '') => {
+        if (startDate && startDate.length >= 7) {
+          return startDate.substring(0, 7);
+        }
+        if (itemTitle) {
+          const match = itemTitle.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+          if (match) {
+            const [, d, m, y] = match;
+            return `${y}-${m.padStart(2, '0')}`;
+          }
+        }
+        const now = new Date();
+        return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
       };
 
       const handleCalculatePeriodProfit = () => {
@@ -9022,58 +9035,63 @@ function RekapLabaRugiModule({ invoices, buktiPembelian, globalSearch, settings,
         data: null
       });
 
-      // Auto-sanitize and auto-sync monthlyOverrides from manualHistory to prevent double accumulation
+      // Auto-sanitize and auto-sync monthlyOverrides from manualHistory by month key
       React.useEffect(() => {
         if (!manualHistory || manualHistory.length === 0) return;
 
-        const now = new Date();
-        const key = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-        const currentOv = monthlyOverrides[key];
-
-        const mappedDetails = manualHistory.map(hItem => {
+        const grouped = {};
+        manualHistory.forEach(hItem => {
           const itemRev = Number(hItem.manualBaseProfit || 0);
           const itemTitle = hItem.title || 'Catatan Periode Laba Rugi';
           const itemAllocs = computeAllocationsWithOrder(itemRev, hItem.allocations || []);
           const totalDeductions = itemAllocs.reduce((sum, a) => sum + (Number(a.computed) || 0), 0);
           const itemNet = Math.max(0, itemRev - totalDeductions);
 
-          return {
+          const mKey = detectMonthKey(itemTitle, hItem.manualPeriodStart || hItem.startDate);
+          if (!grouped[mKey]) grouped[mKey] = [];
+
+          grouped[mKey].push({
             title: itemTitle,
             revenue: itemRev,
             labaBersih: itemNet,
             allocations: itemAllocs,
-            date: hItem.savedAt || now.toLocaleDateString('id-ID')
-          };
+            date: hItem.savedAt || new Date().toLocaleDateString('id-ID')
+          });
         });
 
-        const totalRev = mappedDetails.reduce((sum, item) => sum + item.revenue, 0);
-        const totalNet = mappedDetails.reduce((sum, item) => sum + item.labaBersih, 0);
+        let updatedOverrides = { ...monthlyOverrides };
+        let hasChanges = false;
 
-        // Check if currentOv needs auto-sanitization (if revenue is doubled/wrong, or periodDetails has duplicates)
-        const isMismatched = !currentOv || currentOv.revenue !== totalRev || currentOv.labaBersih !== totalNet ||
-          !Array.isArray(currentOv.periodDetails) || currentOv.periodDetails.length !== mappedDetails.length ||
-          currentOv.periodDetails.some(d => !d.title || d.title.startsWith('Catatan Laba Periode ('));
+        Object.keys(grouped).forEach(mKey => {
+          const mappedDetails = grouped[mKey];
+          const totalRev = mappedDetails.reduce((sum, item) => sum + item.revenue, 0);
+          const totalNet = mappedDetails.reduce((sum, item) => sum + item.labaBersih, 0);
+          const currentOv = monthlyOverrides[mKey];
 
-        if (isMismatched) {
-          const existing = currentOv || { hpp: 0, pembelian: 0, tax: 0 };
-          const updatedOverrides = {
-            ...monthlyOverrides,
-            [key]: {
+          const isMismatched = !currentOv || currentOv.revenue !== totalRev || currentOv.labaBersih !== totalNet ||
+            !Array.isArray(currentOv.periodDetails) || currentOv.periodDetails.length !== mappedDetails.length ||
+            currentOv.periodDetails.some((d, idx) => d.title !== mappedDetails[idx]?.title);
+
+          if (isMismatched) {
+            const existing = currentOv || { hpp: 0, pembelian: 0, tax: 0 };
+            updatedOverrides[mKey] = {
               ...existing,
               revenue: totalRev,
               labaBersih: totalNet,
               periodDetails: mappedDetails
-            }
-          };
+            };
+            hasChanges = true;
+          }
+        });
 
+        if (hasChanges) {
           setMonthlyOverrides(updatedOverrides);
           localStorage.setItem('pt_ar_monthly_overrides', JSON.stringify(updatedOverrides));
         }
       }, [manualHistory]);
 
       const openSyncModal = (revenueVal, hppVal = 0, pembelianVal = 0, taxVal = 0, labaBersihVal = null, titleVal = '', allocationsVal = []) => {
-        const now = new Date();
-        const defaultKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+        const defaultKey = detectMonthKey(titleVal, manualPeriodStart);
         const computedLabaBersih = (labaBersihVal !== null && labaBersihVal !== undefined)
           ? Number(labaBersihVal)
           : (Number(revenueVal || 0) - Number(hppVal || 0) - Number(taxVal || 0));
@@ -9189,8 +9207,7 @@ function RekapLabaRugiModule({ invoices, buktiPembelian, globalSearch, settings,
       };
 
       const handleDirectSyncManualHistoryToMonth = (hItem) => {
-        const now = new Date();
-        const key = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+        const key = detectMonthKey(hItem.title, hItem.manualPeriodStart || hItem.startDate);
         
         // 1. Unhide key if hidden
         const updatedHidden = monthlyHiddenKeys.filter(k => k !== key);
@@ -9240,55 +9257,56 @@ function RekapLabaRugiModule({ invoices, buktiPembelian, globalSearch, settings,
         if (showToast) showToast(`Data "${itemTitle}" (Laba: ${formatRupiah(itemNet)}) berhasil langsung digabungkan ke riwayat bulan ini!`);
       };
 
-      const handleAutoSyncAllManualHistoryToMonth = (targetMonthKey) => {
+      const handleAutoSyncAllManualHistoryToMonth = () => {
         if (!manualHistory || manualHistory.length === 0) {
           if (showToast) showToast("Belum ada data di Riwayat Kalkulasi Manual Ter-Simpan.");
           return;
         }
 
-        const now = new Date();
-        const key = targetMonthKey || `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+        const grouped = {};
+        manualHistory.forEach(hItem => {
+          const mKey = detectMonthKey(hItem.title, hItem.manualPeriodStart || hItem.startDate);
+          if (!grouped[mKey]) grouped[mKey] = [];
 
-        const mappedDetails = manualHistory.map(hItem => {
           const itemRev = Number(hItem.manualBaseProfit || 0);
           const itemTitle = hItem.title || 'Catatan Periode Laba Rugi';
           const itemAllocs = computeAllocationsWithOrder(itemRev, hItem.allocations || []);
           const totalDeductions = itemAllocs.reduce((sum, a) => sum + (Number(a.computed) || 0), 0);
           const itemNet = Math.max(0, itemRev - totalDeductions);
 
-          return {
+          grouped[mKey].push({
             title: itemTitle,
             revenue: itemRev,
             labaBersih: itemNet,
             allocations: itemAllocs,
-            date: hItem.savedAt || now.toLocaleDateString('id-ID')
-          };
+            date: hItem.savedAt || new Date().toLocaleDateString('id-ID')
+          });
         });
 
-        const totalRev = mappedDetails.reduce((sum, item) => sum + item.revenue, 0);
-        const totalNet = mappedDetails.reduce((sum, item) => sum + item.labaBersih, 0);
+        let updatedOverrides = { ...monthlyOverrides };
+        Object.keys(grouped).forEach(mKey => {
+          const mappedDetails = grouped[mKey];
+          const totalRev = mappedDetails.reduce((sum, item) => sum + item.revenue, 0);
+          const totalNet = mappedDetails.reduce((sum, item) => sum + item.labaBersih, 0);
+          const existing = monthlyOverrides[mKey] || { hpp: 0, pembelian: 0, tax: 0 };
 
-        const existing = monthlyOverrides[key] || { hpp: 0, pembelian: 0, tax: 0 };
-        const updatedOverrides = {
-          ...monthlyOverrides,
-          [key]: {
+          updatedOverrides[mKey] = {
             ...existing,
             revenue: totalRev,
             labaBersih: totalNet,
             periodDetails: mappedDetails
-          }
-        };
+          };
+        });
 
-        const updatedHidden = monthlyHiddenKeys.filter(k => k !== key);
-        if (updatedHidden.length !== monthlyHiddenKeys.length) {
-          setMonthlyHiddenKeys(updatedHidden);
-          localStorage.setItem('pt_ar_monthly_hidden_keys', JSON.stringify(updatedHidden));
-        }
+        const keysToUnhide = Object.keys(grouped);
+        const updatedHidden = monthlyHiddenKeys.filter(k => !keysToUnhide.includes(k));
+        setMonthlyHiddenKeys(updatedHidden);
+        localStorage.setItem('pt_ar_monthly_hidden_keys', JSON.stringify(updatedHidden));
 
         setMonthlyOverrides(updatedOverrides);
         localStorage.setItem('pt_ar_monthly_overrides', JSON.stringify(updatedOverrides));
 
-        if (showToast) showToast(`Berhasil menyinkronkan ${mappedDetails.length} catatan riwayat manual ke bulan ini (Total Laba: ${formatRupiah(totalNet)})!`);
+        if (showToast) showToast(`Seluruh data riwayat manual (${manualHistory.length} catatan) berhasil disinkronkan sesuai bulan masing-masing!`);
       };
 
       const handlePrintLaporanBulanan = (monthLabel, data) => {
