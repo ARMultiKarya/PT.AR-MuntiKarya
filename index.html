@@ -8630,6 +8630,7 @@ function RekapLabaRugiModule({ invoices, buktiPembelian, globalSearch, settings,
       // Monthly Overrides & Hidden Months States
       const [monthlyOverrides, setMonthlyOverrides] = React.useState(() => JSON.parse(localStorage.getItem('pt_ar_monthly_overrides') || '{}'));
       const [monthlyHiddenKeys, setMonthlyHiddenKeys] = React.useState(() => JSON.parse(localStorage.getItem('pt_ar_monthly_hidden_keys') || '[]'));
+      const [manualHistory, setManualHistory] = React.useState(() => JSON.parse(localStorage.getItem('pt_ar_manual_saved_history') || '[]'));
       const [editMonthModal, setEditMonthModal] = React.useState({
         isOpen: false,
         monthKey: '',
@@ -9026,7 +9027,6 @@ function RekapLabaRugiModule({ invoices, buktiPembelian, globalSearch, settings,
 
 
       // Saved History & Editing for Manual Calculator
-      const [manualHistory, setManualHistory] = React.useState(() => JSON.parse(localStorage.getItem('pt_ar_manual_saved_history') || '[]'));
       const [manualRecordTitle, setManualRecordTitle] = React.useState('');
       const [editingHistoryId, setEditingHistoryId] = React.useState(null);
 
