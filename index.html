@@ -8807,7 +8807,8 @@ function RekapLabaRugiModule({ invoices, buktiPembelian, globalSearch, settings,
           let sumMitra1to4Alloc = 0;
           if (Array.isArray(item.periodDetails) && item.periodDetails.length > 0) {
             item.periodDetails.forEach(p => {
-              const rawA = (Array.isArray(p.allocations) && p.allocations.length > 0)
+              const pRev = Number(p.revenue || p.manualBaseProfit || (item.revenue / item.periodDetails.length));
+              const pAllocs = (Array.isArray(p.allocations) && p.allocations.length > 0)
                 ? p.allocations
                 : [
                     { id: 'm_1', name: 'Mitra 1 (10%)', type: 'percent', value: 10 },
@@ -8815,14 +8816,31 @@ function RekapLabaRugiModule({ invoices, buktiPembelian, globalSearch, settings,
                     { id: 'm_3', name: 'Mitra 3 (10%)', type: 'percent', value: 10 },
                     { id: 'm_4', name: 'Mitra 4 (10%)', type: 'percent', value: 10 }
                   ];
-              const comp = computeAllocationsWithOrder(p.revenue || item.revenue || 0, rawA);
-              comp.forEach(a => {
+
+              let periodSumMitra = 0;
+              pAllocs.forEach(a => {
                 const nameLower = (a.name || '').toLowerCase();
                 if (nameLower.includes('mitra 1') || nameLower.includes('mitra 2') || nameLower.includes('mitra 3') || nameLower.includes('mitra 4')) {
-                  sumMitra1to4Alloc += Number(a.computed || 0);
+                  const valFound = (a.computed && Number(a.computed) > 0)
+                    ? Number(a.computed)
+                    : Number(a.val !== undefined ? a.val : (a.value !== undefined ? a.value : 0));
+                  periodSumMitra += valFound;
                 }
               });
+
+              if (periodSumMitra > 0) {
+                sumMitra1to4Alloc += periodSumMitra;
+              } else {
+                const comp = computeAllocationsWithOrder(pRev, pAllocs);
+                comp.forEach(a => {
+                  const nameLower = (a.name || '').toLowerCase();
+                  if (nameLower.includes('mitra 1') || nameLower.includes('mitra 2') || nameLower.includes('mitra 3') || nameLower.includes('mitra 4')) {
+                    sumMitra1to4Alloc += Number(a.computed || 0);
+                  }
+                });
+              }
             });
+
             if (sumMitra1to4Alloc === 0) {
               sumMitra1to4Alloc = Math.round(labaBersih * 0.40);
             }
@@ -9522,7 +9540,7 @@ function RekapLabaRugiModule({ invoices, buktiPembelian, globalSearch, settings,
 
         let printTotalMitra1to4 = 0;
         details.forEach(item => {
-          const itemRev = Number(item.revenue || 0);
+          const itemRev = Number(item.revenue || item.manualBaseProfit || (totalRev / (details.length || 1)));
           const rawA = (Array.isArray(item.allocations) && item.allocations.length > 0)
             ? item.allocations
             : [
@@ -9531,13 +9549,29 @@ function RekapLabaRugiModule({ invoices, buktiPembelian, globalSearch, settings,
                 { id: 'm_3', name: 'Mitra 3 (10%)', type: 'percent', value: 10 },
                 { id: 'm_4', name: 'Mitra 4 (10%)', type: 'percent', value: 10 }
               ];
-          const comp = computeAllocationsWithOrder(itemRev, rawA);
-          comp.forEach(a => {
+
+          let periodSumMitra = 0;
+          rawA.forEach(a => {
             const nameLower = (a.name || '').toLowerCase();
             if (nameLower.includes('mitra 1') || nameLower.includes('mitra 2') || nameLower.includes('mitra 3') || nameLower.includes('mitra 4')) {
-              printTotalMitra1to4 += Number(a.computed || 0);
+              const valFound = (a.computed && Number(a.computed) > 0)
+                ? Number(a.computed)
+                : Number(a.val !== undefined ? a.val : (a.value !== undefined ? a.value : 0));
+              periodSumMitra += valFound;
             }
           });
+
+          if (periodSumMitra > 0) {
+            printTotalMitra1to4 += periodSumMitra;
+          } else {
+            const comp = computeAllocationsWithOrder(itemRev, rawA);
+            comp.forEach(a => {
+              const nameLower = (a.name || '').toLowerCase();
+              if (nameLower.includes('mitra 1') || nameLower.includes('mitra 2') || nameLower.includes('mitra 3') || nameLower.includes('mitra 4')) {
+                printTotalMitra1to4 += Number(a.computed || 0);
+              }
+            });
+          }
         });
 
         if (printTotalMitra1to4 === 0) {
