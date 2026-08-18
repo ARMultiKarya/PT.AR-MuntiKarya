@@ -8975,6 +8975,18 @@ function RekapLabaRugiModule({ invoices, buktiPembelian, globalSearch, settings,
         setManualRecordTitle('');
       };
 
+      const handleLoadManualHistory = (hRecord) => {
+        if (!hRecord) return;
+        setManualBaseProfit(Number(hRecord.manualBaseProfit || 0));
+        setManualBaseProfitInput(Number(hRecord.manualBaseProfit || 0) === 0 ? '' : new Intl.NumberFormat('id-ID').format(hRecord.manualBaseProfit));
+        setAllocations(hRecord.allocations || []);
+        setManualRecordTitle(hRecord.title || '');
+        if (hRecord.manualPeriodStart) setManualPeriodStart(hRecord.manualPeriodStart);
+        if (hRecord.manualPeriodEnd) setManualPeriodEnd(hRecord.manualPeriodEnd);
+        setEditingHistoryId(hRecord.id);
+        if (showToast) showToast(`Catatan "${hRecord.title}" berhasil dimuat ke kalkulator!`);
+      };
+
       // Weekly Mitra Rekap History & Accumulation
       const [weeklyRekapHistory, setWeeklyRekapHistory] = React.useState(() => JSON.parse(localStorage.getItem('pt_ar_weekly_rekap_history') || '[]'));
 
