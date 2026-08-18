@@ -8782,6 +8782,41 @@ function RekapLabaRugiModule({ invoices, buktiPembelian, globalSearch, settings,
       });
       const [allocations, setAllocations] = React.useState(() => JSON.parse(localStorage.getItem('pt_ar_manual_allocations') || '[]'));
 
+      const getFormattedPeriodTitle = (startStr, endStr) => {
+        if (!startStr || !endStr) return `Catatan Laba Periode (${new Date().toLocaleDateString('id-ID')})`;
+        
+        const formatDateIndo = (dStr) => {
+          if (!dStr) return '';
+          const parts = dStr.split('-');
+          if (parts.length !== 3) return dStr;
+          return `${parts[2]}/${parts[1]}/${parts[0]}`;
+        };
+
+        const startFormatted = formatDateIndo(startStr);
+        const endFormatted = formatDateIndo(endStr);
+        
+        // Count week number within the specific month (reset per month)
+        const targetDate = new Date(startStr + 'T00:00:00');
+        let periodNum = 1;
+        
+        if (!isNaN(targetDate.getTime())) {
+          const year = targetDate.getFullYear();
+          const month = targetDate.getMonth();
+          const day = targetDate.getDate();
+          
+          let mondayCount = 0;
+          for (let d = 1; d <= day; d++) {
+            const checkDate = new Date(year, month, d);
+            if (checkDate.getDay() === 1) { // 1 = Monday (minggu kerja)
+              mondayCount++;
+            }
+          }
+          periodNum = mondayCount > 0 ? mondayCount : Math.min(5, Math.floor((day - 1) / 7) + 1);
+        }
+
+        return `Laba Periode (${startFormatted} s/d ${endFormatted}) PERIODE ${periodNum}`;
+      };
+
       const handleCalculatePeriodProfit = () => {
         if (!manualPeriodStart && !manualPeriodEnd) {
           alert("Silakan pilih Tanggal Mulai dan Tanggal Selesai terlebih dahulu!");
@@ -8806,16 +8841,10 @@ function RekapLabaRugiModule({ invoices, buktiPembelian, globalSearch, settings,
         setManualBaseProfit(calcLabaBersih);
         setManualBaseProfitInput(calcLabaBersih === 0 ? '' : new Intl.NumberFormat('id-ID').format(calcLabaBersih));
 
-        const formatDateIndo = (dStr) => {
-          if (!dStr) return '';
-          const [y, m, d] = dStr.split('-');
-          return `${d}/${m}/${y}`;
-        };
-
-        const periodLabel = `Laba Periode (${formatDateIndo(manualPeriodStart)} s/d ${formatDateIndo(manualPeriodEnd)})`;
+        const periodLabel = getFormattedPeriodTitle(manualPeriodStart, manualPeriodEnd);
         setManualRecordTitle(periodLabel);
 
-        if (showToast) showToast(`Laba bersih periode ${formatDateIndo(manualPeriodStart)} s/d ${formatDateIndo(manualPeriodEnd)} sebesar ${formatRupiah(calcLabaBersih)} berhasil kalkulasi!`);
+        if (showToast) showToast(`Catatan "${periodLabel}" sebesar ${formatRupiah(calcLabaBersih)} berhasil kalkulasi!`);
       };
       const [newAllocName, setNewAllocName] = React.useState('');
       const [newAllocType, setNewAllocType] = React.useState('rp'); // 'rp' or 'percent'
@@ -8893,7 +8922,7 @@ function RekapLabaRugiModule({ invoices, buktiPembelian, globalSearch, settings,
         const now = new Date();
         const timeStr = now.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
         const defaultTitle = (manualPeriodStart && manualPeriodEnd) 
-          ? `Laba Periode (${manualPeriodStart.split('-').reverse().join('/')} s/d ${manualPeriodEnd.split('-').reverse().join('/')})`
+          ? getFormattedPeriodTitle(manualPeriodStart, manualPeriodEnd)
           : `Catatan Laba Periode (${now.toLocaleDateString('id-ID')})`;
 
         const titleToUse = manualRecordTitle.trim() || defaultTitle;
@@ -8940,15 +8969,15 @@ function RekapLabaRugiModule({ invoices, buktiPembelian, globalSearch, settings,
 
       const handleSaveWeeklyRekap = (currentStats) => {
         const periodStr = startDate && endDate 
-          ? `${startDate.split('-').reverse().join('/')} s/d ${endDate.split('-').reverse().join('/')}`
-          : 'Semua Waktu';
+          ? getFormattedPeriodTitle(startDate, endDate)
+          : 'Rekap Periode (Semua Waktu)';
         
         const now = new Date();
         const timeStr = now.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
 
         const newRecord = {
           id: 'wk_' + Date.now(),
-          periodLabel: `Rekap Periode (${periodStr})`,
+          periodLabel: periodStr,
           savedAt: timeStr,
           startDate,
           endDate,
@@ -10656,7 +10685,7 @@ function RekapLabaRugiModule({ invoices, buktiPembelian, globalSearch, settings,
                               <button
                                 type="button"
                                 onClick={() => {
-                                  const pTitle = manualRecordTitle || (manualPeriodStart && manualPeriodEnd ? `Laba Periode (${manualPeriodStart} s/d ${manualPeriodEnd})` : `Catatan Laba Periode (${new Date().toLocaleDateString('id-ID')})`);
+                                  const pTitle = manualRecordTitle || (manualPeriodStart && manualPeriodEnd ? getFormattedPeriodTitle(manualPeriodStart, manualPeriodEnd) : `Catatan Laba Periode (${new Date().toLocaleDateString('id-ID')})`);
                                   const mappedAllocs = allocations.map(a => ({
                                     name: a.name,
                                     type: a.type,
