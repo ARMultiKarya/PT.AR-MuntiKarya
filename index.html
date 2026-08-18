@@ -9072,7 +9072,8 @@ function RekapLabaRugiModule({ invoices, buktiPembelian, globalSearch, settings,
       // Bagi Hasil shares
       const perMitra = labaBersihMitra * 0.10;
       const perOrangKe7 = labaBersihMitra * 0.05;
-      const sisaPT = labaBersihMitra * 0.35;
+      const totalAllocatedToMitra = (perMitra * 6) + perOrangKe7;
+      const sisaPT = Math.max(0, labaBersihMitra - totalAllocatedToMitra);
 
       // Export standard Excel
       const handleExportExcelStandard = () => {
@@ -9174,7 +9175,7 @@ function RekapLabaRugiModule({ invoices, buktiPembelian, globalSearch, settings,
           ['Mitra 5', '10%', perMitra],
           ['Mitra 6', '10%', perMitra],
           ['Penerima Ke-7', '5%', perOrangKe7],
-          ['Sisa Kas PT', '35%', sisaPT]
+          ['Sisa Kas PT', 'Sisa Kas', sisaPT]
         ];
 
         const wb = XLSX.utils.book_new();
@@ -9483,9 +9484,9 @@ function RekapLabaRugiModule({ invoices, buktiPembelian, globalSearch, settings,
                         <span className="text-slate-500">Penerima Ke-7 (5%)</span>
                         <span className="font-bold text-slate-800 dark:text-white">{formatRupiah(perOrangKe7)}</span>
                       </div>
-                      <div className="flex justify-between font-medium">
-                        <span className="text-slate-500">Sisa Kas PT (35%)</span>
-                        <span className="font-bold text-primary-600">{formatRupiah(sisaPT)}</span>
+                      <div className="flex justify-between font-medium pt-1.5 border-t border-slate-100 dark:border-slate-900">
+                        <span className="text-slate-700 dark:text-slate-200 font-extrabold">Sisa Kas PT (Sisa Kas)</span>
+                        <span className="font-extrabold text-primary-600 dark:text-primary-400">{formatRupiah(sisaPT)}</span>
                       </div>
                     </div>
                   </div>
