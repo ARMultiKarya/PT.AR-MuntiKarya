@@ -8786,9 +8786,33 @@ function RekapLabaRugiModule({ invoices, buktiPembelian, globalSearch, settings,
           const labaKotor = item.revenue - item.hpp;
           const taxVal = item.tax || (labaKotor > 0 ? labaKotor * 0.02 : 0);
           
+          let effectiveDetails = (Array.isArray(item.periodDetails) && item.periodDetails.length > 0)
+            ? item.periodDetails
+            : [];
+
+          if (effectiveDetails.length === 0 && Array.isArray(manualHistory) && manualHistory.length > 0) {
+            manualHistory.forEach(hItem => {
+              const mKey = detectMonthKey(hItem.title, hItem.manualPeriodStart || hItem.startDate);
+              if (mKey === key) {
+                const itemRev = Number(hItem.manualBaseProfit || 0);
+                const itemTitle = hItem.title || 'Catatan Periode Laba Rugi';
+                const itemAllocs = computeAllocationsWithOrder(itemRev, hItem.allocations || []);
+                const totalDeductions = itemAllocs.reduce((sum, a) => sum + (Number(a.computed) || 0), 0);
+                const itemNet = Math.max(0, itemRev - totalDeductions);
+                effectiveDetails.push({
+                  title: itemTitle,
+                  revenue: itemRev,
+                  labaBersih: itemNet,
+                  allocations: itemAllocs,
+                  date: hItem.savedAt || new Date().toLocaleDateString('id-ID')
+                });
+              }
+            });
+          }
+
           let totalDeductFromDetails = 0;
-          if (Array.isArray(item.periodDetails) && item.periodDetails.length > 0) {
-            item.periodDetails.forEach(p => {
+          if (effectiveDetails.length > 0) {
+            effectiveDetails.forEach(p => {
               const rawA = (Array.isArray(p.allocations) && p.allocations.length > 0)
                 ? p.allocations
                 : [
@@ -8813,9 +8837,9 @@ function RekapLabaRugiModule({ invoices, buktiPembelian, globalSearch, settings,
             : (item.customLabaBersih !== undefined ? item.customLabaBersih : (labaKotor - taxVal));
 
           let sumMitra1to4Alloc = 0;
-          if (Array.isArray(item.periodDetails) && item.periodDetails.length > 0) {
-            item.periodDetails.forEach(p => {
-              const pRev = Number(p.revenue || p.manualBaseProfit || (item.revenue / item.periodDetails.length));
+          if (effectiveDetails.length > 0) {
+            effectiveDetails.forEach(p => {
+              const pRev = Number(p.revenue || p.manualBaseProfit || (item.revenue / effectiveDetails.length));
               const pAllocs = (Array.isArray(p.allocations) && p.allocations.length > 0)
                 ? p.allocations
                 : [
@@ -8853,10 +8877,10 @@ function RekapLabaRugiModule({ invoices, buktiPembelian, globalSearch, settings,
             sumMitra1to4Alloc: Math.round(sumMitra1to4Alloc),
             jumlahTotal,
             sisaAkhir,
-            periodDetails: item.periodDetails || []
+            periodDetails: effectiveDetails
           };
         });
-      }, [invoices, buktiPembelian, monthlyOverrides, monthlyHiddenKeys]);
+      }, [invoices, buktiPembelian, monthlyOverrides, monthlyHiddenKeys, manualHistory]);
 
       const handleMonthSelect = (monthKey) => {
         setSelectedMonthKey(monthKey);
