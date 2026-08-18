@@ -8980,11 +8980,10 @@ function RekapLabaRugiModule({ invoices, buktiPembelian, globalSearch, settings,
           { id: 6, name: 'Mitra 4 (10%)', type: 'percent', value: 10 },
           { id: 7, name: 'Mitra 5 (10%)', type: 'percent', value: 10 },
           { id: 8, name: 'Mitra 6 (10%)', type: 'percent', value: 10 },
-          { id: 9, name: 'Penerima Ke-7 (5%)', type: 'percent', value: 5 },
-          { id: 10, name: 'Sisa Kas PT (35%)', type: 'percent', value: 35 }
+          { id: 9, name: 'Penerima Ke-7 (5%)', type: 'percent', value: 5 }
         ];
         setAllocations(template);
-        if (showToast) showToast("Template kemitraan berhasil dimuat.");
+        if (showToast) showToast("Template kemitraan berhasil dimuat. Sisa laba otomatis menjadi Sisa Kas PT.");
       };
 
       // Helper function to set filter to current week (Monday - Saturday)
@@ -9691,13 +9690,13 @@ function RekapLabaRugiModule({ invoices, buktiPembelian, globalSearch, settings,
                         return (
                           <>
                             <div className="pt-3 flex justify-between font-extrabold text-sm border-t-2 border-dashed border-slate-200 dark:border-slate-800">
-                              <span>Sisa Laba Bersih Akhir</span>
+                              <span>Sisa Kas PT (Sisa Laba Bersih)</span>
                               <span className={`text-base ${remaining >= 0 ? 'text-green-600' : 'text-red-655'}`}>
                                 {formatRupiah(remaining)}
                               </span>
                             </div>
                             <div className="bg-slate-50 dark:bg-slate-900/60 p-3.5 rounded-xl border border-slate-100 dark:border-slate-850 text-[10px] leading-relaxed text-slate-450 dark:text-slate-400 mt-2 font-medium">
-                              Sisa Laba Bersih Akhir adalah profit acuan dikurangi seluruh alokasi kegunaan flat dan persentase yang Anda tambahkan.
+                              Sisa Kas PT adalah sisa laba bersih akhir setelah dikurangi seluruh alokasi potongan flat & persentase mitra yang Anda tambahkan.
                             </div>
 
                             {/* Form Simpan / Update ke Riwayat */}
