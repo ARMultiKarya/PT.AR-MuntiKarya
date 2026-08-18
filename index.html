@@ -8795,26 +8795,24 @@ function RekapLabaRugiModule({ invoices, buktiPembelian, globalSearch, settings,
         const startFormatted = formatDateIndo(startStr);
         const endFormatted = formatDateIndo(endStr);
         
-        // Count week number within the specific month (reset per month)
+        // Anchor 2026-07-20 as PERIODE 1
+        const anchorDate = new Date('2026-07-20T00:00:00');
         const targetDate = new Date(startStr + 'T00:00:00');
-        let periodNum = 1;
         
+        let periodNum = 1;
         if (!isNaN(targetDate.getTime())) {
-          const year = targetDate.getFullYear();
-          const month = targetDate.getMonth();
-          const day = targetDate.getDate();
-          
-          let mondayCount = 0;
-          for (let d = 1; d <= day; d++) {
-            const checkDate = new Date(year, month, d);
-            if (checkDate.getDay() === 1) { // 1 = Monday (minggu kerja)
-              mondayCount++;
-            }
+          const diffDays = Math.round((targetDate - anchorDate) / (1000 * 60 * 60 * 24));
+          if (diffDays >= 0) {
+            periodNum = Math.floor(diffDays / 7) + 1;
+          } else {
+            const day = targetDate.getDate();
+            periodNum = Math.min(5, Math.floor((day - 1) / 7) + 1);
           }
-          periodNum = mondayCount > 0 ? mondayCount : Math.min(5, Math.floor((day - 1) / 7) + 1);
         }
 
         return `Laba Periode (${startFormatted} s/d ${endFormatted}) PERIODE ${periodNum}`;
+      };
+
       const detectMonthKey = (itemTitle = '', startDate = '') => {
         if (startDate && startDate.length >= 7) {
           return startDate.substring(0, 7);
@@ -9042,7 +9040,11 @@ function RekapLabaRugiModule({ invoices, buktiPembelian, globalSearch, settings,
         const grouped = {};
         manualHistory.forEach(hItem => {
           const itemRev = Number(hItem.manualBaseProfit || 0);
-          const itemTitle = hItem.title || 'Catatan Periode Laba Rugi';
+          const itemTitle = (hItem.title && !hItem.title.startsWith('Catatan Laba Periode ('))
+            ? hItem.title
+            : ((hItem.manualPeriodStart && hItem.manualPeriodEnd)
+              ? getFormattedPeriodTitle(hItem.manualPeriodStart, hItem.manualPeriodEnd)
+              : (hItem.title || 'Catatan Periode Laba Rugi'));
           const itemAllocs = computeAllocationsWithOrder(itemRev, hItem.allocations || []);
           const totalDeductions = itemAllocs.reduce((sum, a) => sum + (Number(a.computed) || 0), 0);
           const itemNet = Math.max(0, itemRev - totalDeductions);
@@ -9330,6 +9332,10 @@ function RekapLabaRugiModule({ invoices, buktiPembelian, globalSearch, settings,
           const itemNet = Number(item.labaBersih || 0);
           const refNo = `REF-${(idx + 1).toString().padStart(3, '0')}`;
           const dateStr = item.date || '-';
+          
+          const rawTitle = item.title || 'Laba Periode';
+          const hasPeriodeSuffix = rawTitle.includes('PERIODE');
+          const periodDisplayTitle = hasPeriodeSuffix ? rawTitle : `${rawTitle} PERIODE ${idx + 1}`;
 
           // 1. Header Row for Period Note (Debit)
           runningSaldo += itemRev;
@@ -9338,7 +9344,7 @@ function RekapLabaRugiModule({ invoices, buktiPembelian, globalSearch, settings,
               <td style="text-align:center; font-family:monospace; font-size:10px; color:#0369a1;">${dateStr}</td>
               <td style="text-align:center; font-family:monospace; font-size:10px; color:#0369a1;">${refNo}</td>
               <td style="color:#0369a1; font-weight:800; font-size:11px;">
-                ${item.title} <span style="font-size:9px; font-weight:normal; color:#0284c7;">(Profit Acuan Utama)</span>
+                ${periodDisplayTitle} <span style="font-size:9px; font-weight:normal; color:#0284c7;">(Profit Acuan Utama)</span>
               </td>
               <td style="text-align:right; font-weight:800; color:#0369a1;">+${formatRupiah(itemRev)}</td>
               <td style="text-align:center; color:#cbd5e1;">-</td>
@@ -9379,7 +9385,7 @@ function RekapLabaRugiModule({ invoices, buktiPembelian, globalSearch, settings,
           rowsHtml += `
             <tr style="background:#f8fafc; font-weight:bold; border-bottom:2px solid #cbd5e1; font-size:10px;">
               <td colspan="2" style="text-align:center; color:#64748b; font-size:9px;">SUBTOTAL ${refNo}</td>
-              <td style="color:#475569;">Sisa Laba Bersih (${item.title})</td>
+              <td style="color:#475569;">Sisa Laba Bersih (${periodDisplayTitle})</td>
               <td style="text-align:right; color:#0369a1;">+${formatRupiah(itemRev)}</td>
               <td style="text-align:right; color:#dc2626;">-${formatRupiah(itemRev - itemNet)}</td>
               <td style="text-align:right; color:#15803d; font-weight:800; background:#f0fdf4;">${formatRupiah(itemNet)}</td>
