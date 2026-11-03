@@ -3915,8 +3915,11 @@
     // 6. PRICE LIST VIEW MODULE
     // ==========================================
     function PriceListModule({ priceLists, barangList, globalSearch, reloadData, logActivity, showToast, priceAlerts, currentUser, suppliers = [], poList = [], buktiPembelian = [], onNavigate }) {
+      const isSppg = currentUser?.role === 'sppg';
       const isReadOnly = currentUser?.role !== 'admin' && currentUser?.role !== 'finance';
       const [modalOpen, setModalOpen] = React.useState(false);
+      const [sppgCategory, setSppgCategory] = React.useState('Semua');
+      const [sppgStockFilter, setSppgStockFilter] = React.useState('all');
       
       const [barangId, setBarangId] = React.useState('');
       const [hargaBeli, setHargaBeli] = React.useState('');
