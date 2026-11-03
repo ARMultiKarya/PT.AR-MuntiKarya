@@ -3510,41 +3510,232 @@
 
           {/* Form Modal */}
           {modalOpen && (
-            <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex justify-center items-center p-4">
-              <div className="bg-white dark:bg-slate-950 w-full max-w-lg rounded-2xl shadow-xl border border-slate-200 dark:border-slate-850 overflow-hidden animate-fade-in">
-                <div className="px-6 py-4 bg-slate-50 dark:bg-slate-900 border-b border-slate-100 dark:border-slate-850 flex justify-between items-center">
-                  <h4 className="font-bold text-xs uppercase tracking-wider text-slate-500">{modalOpen === 'add' ? 'Tambah Supplier Baru' : 'Ubah Data Supplier'}</h4>
-                  <button onClick={() => setModalOpen(null)} className="text-slate-400 hover:text-slate-600"><i data-lucide="x" className="w-5 h-5"></i></button>
+            <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm overflow-y-auto p-2 sm:p-4 flex justify-center items-start sm:items-center min-h-screen">
+              <div className="bg-white dark:bg-slate-950 w-full max-w-3xl rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden animate-fade-in flex flex-col max-h-[92vh] my-auto">
+                {/* Modal Header (Pinned at Top) */}
+                <div className="px-6 py-4 bg-slate-50 dark:bg-slate-900 border-b border-slate-100 dark:border-slate-855 flex justify-between items-center flex-shrink-0">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-lg bg-primary-50 dark:bg-primary-950/40 text-primary-600 flex items-center justify-center font-bold">
+                      <i data-lucide="receipt" className="w-4 h-4"></i>
+                    </div>
+                    <div>
+                      <h4 className="font-extrabold text-sm text-slate-800 dark:text-white">Buat Faktur / Invoice Penjualan</h4>
+                      <span className="text-[10px] text-slate-400 font-semibold block">Penagihan resmi kepada SPPG / Mitra berdasarkan PO</span>
+                    </div>
+                  </div>
+                  <button type="button" onClick={() => setModalOpen(false)} className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 flex items-center justify-center transition-all">
+                    <i data-lucide="x" className="w-4 h-4"></i>
+                  </button>
                 </div>
-                <form onSubmit={handleSave} className="p-6 space-y-4 text-xs font-semibold">
-                  <div>
-                    <label className="block text-[10px] text-slate-400 uppercase tracking-wide mb-1">Kode Supplier</label>
-                    <input type="text" readOnly value={code} className="w-full bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-3 py-2 rounded-xl focus:outline-none dark:text-white font-mono" />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] text-slate-400 uppercase tracking-wide mb-1">Nama Supplier *</label>
-                    <input type="text" required value={name} onChange={(e) => setName(e.target.value)} className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-3 py-2 rounded-xl focus:border-primary-500 focus:outline-none dark:text-white" />
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
+                
+                {/* Modal Form Body (Scrollable in Middle) */}
+                <form id="invoiceForm" onSubmit={handleSave} className="p-6 overflow-y-auto flex-1 min-h-0 space-y-4 text-xs font-semibold">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <div>
-                      <label className="block text-[10px] text-slate-400 uppercase tracking-wide mb-1">No. Telepon</label>
-                      <input type="text" value={phone} onChange={(e) => setPhone(e.target.value)} className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-3 py-2 rounded-xl focus:border-primary-500 focus:outline-none dark:text-white" />
+                      <label className="block text-[10px] text-slate-400 uppercase tracking-wide mb-1">Nomor Invoice</label>
+                      <input type="text" readOnly value={invoiceNumber} className="w-full bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-3 py-2 rounded-xl focus:outline-none dark:text-white font-mono font-bold" />
                     </div>
                     <div>
-                      <label className="block text-[10px] text-slate-400 uppercase tracking-wide mb-1">Email</label>
-                      <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-3 py-2 rounded-xl focus:border-primary-500 focus:outline-none dark:text-white" />
+                      <label className="block text-[10px] text-slate-400 uppercase tracking-wide mb-1">Tanggal Terbit *</label>
+                      <input type="date" required value={invoiceDate} onChange={(e) => setInvoiceDate(e.target.value)} className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-3 py-2 rounded-xl focus:outline-none dark:text-white" />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] text-slate-400 uppercase tracking-wide mb-1">Jatuh Tempo *</label>
+                      <input type="date" required value={dueDate} onChange={(e) => setDueDate(e.target.value)} className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-3 py-2 rounded-xl focus:outline-none dark:text-white" />
                     </div>
                   </div>
-                  <div>
-                    <label className="block text-[10px] text-slate-400 uppercase tracking-wide mb-1">Alamat Lengkap</label>
-                    <textarea rows="3" value={address} onChange={(e) => setAddress(e.target.value)} className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-3 py-2 rounded-xl focus:border-primary-500 focus:outline-none dark:text-white" />
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-[10px] text-slate-400 uppercase tracking-wide mb-1 font-bold">
+                        Pilih Ref Purchase Order (PO)
+                      </label>
+                      <select 
+                        value={refPoId} 
+                        onChange={(e) => setRefPoId(e.target.value)} 
+                        className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-3 py-2 rounded-xl focus:border-primary-500 focus:outline-none dark:text-white text-xs font-semibold"
+                      >
+                        <option value="">-- Pilih Referensi PO (Bebas Dipilih) --</option>
+                        {poList
+                          .filter(po => po.status !== 'Lunas' && po.status !== 'Dibatalkan')
+                          .map(po => {
+                            const c = customers.find(x => x.id === po.customerId);
+                            const cName = c ? c.name : (po.createdByDetail || 'SPPG');
+                            return (
+                              <option key={po.id} value={po.id}>
+                                {po.poNumber} - {cName} (Status: {po.status || 'Draft'})
+                              </option>
+                            );
+                          })}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] text-slate-400 uppercase tracking-wide mb-1 font-bold">
+                        Nama Pemesan / Customer *
+                      </label>
+                      <select 
+                        required 
+                        value={customerId} 
+                        onChange={(e) => setCustomerId(e.target.value)} 
+                        className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-3 py-2 rounded-xl focus:outline-none dark:text-white font-semibold text-xs"
+                      >
+                        <option value="">-- Pilih Customer / Pemesan --</option>
+                        {customers.map(c => (
+                          <option key={c.id} value={c.id}>{c.name}</option>
+                        ))}
+                      </select>
+                    </div>
                   </div>
-                  
-                  <div className="flex justify-end gap-3 pt-4 border-t border-slate-100 dark:border-slate-850">
-                    <button type="button" onClick={() => setModalOpen(null)} className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-800 text-slate-500 text-xs font-bold hover:bg-slate-50">Batal</button>
-                    <button type="submit" className="px-5 py-2 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-xs font-bold shadow-lg shadow-primary-950/10">Simpan Mitra</button>
+
+                  {/* Items list */}
+                  <div className="border-t border-slate-100 dark:border-slate-855 pt-4">
+                    <div className="flex justify-between items-center mb-3">
+                      <div>
+                        <h5 className="font-bold text-[10px] text-slate-455 uppercase tracking-wider">Item Barang yang Ditagihkan (Invoice)</h5>
+                        <span className="text-[10px] text-slate-400 font-normal">Ditarik otomatis dari PO atau bisa ditambah/diubah manual</span>
+                      </div>
+                      <button 
+                        type="button" 
+                        onClick={handleAddItem} 
+                        className="text-primary-600 hover:text-primary-700 font-extrabold text-[10px] uppercase flex items-center gap-1 bg-primary-50 dark:bg-primary-950/30 px-3 py-1.5 rounded-lg border border-primary-200 dark:border-primary-800 shadow-xs"
+                      >
+                        <i data-lucide="plus-circle" className="w-3.5 h-3.5"></i> Tambah Baris
+                      </button>
+                    </div>
+
+                    <div className="space-y-3">
+                      {items.map((item, idx) => (
+                        <div key={idx} className="grid grid-cols-12 gap-2 items-center bg-slate-50/70 dark:bg-slate-900/50 p-2.5 rounded-xl border border-slate-150 dark:border-slate-800">
+                          <div className="col-span-5">
+                            <label className="block text-[8px] text-slate-400 uppercase mb-0.5">Pilih Barang</label>
+                            <select 
+                              required 
+                              value={item.barangId} 
+                              onChange={(e) => handleItemChange(idx, 'barangId', e.target.value)} 
+                              className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-2 py-1.5 rounded-lg text-xs font-semibold"
+                            >
+                              <option value="">-- Pilih Barang --</option>
+                              {barangList.map(bar => (
+                                <option key={bar.id} value={bar.id}>{bar.name} ({bar.unit})</option>
+                              ))}
+                            </select>
+                          </div>
+                          <div className="col-span-2">
+                            <label className="block text-[8px] text-slate-400 uppercase mb-0.5 text-center">Qty Kirim</label>
+                            <input 
+                              type="number" 
+                              min="1" 
+                              required 
+                              value={item.qty} 
+                              onChange={(e) => handleItemChange(idx, 'qty', e.target.value)} 
+                              className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-2 py-1.5 rounded-lg text-xs text-center font-bold" 
+                            />
+                          </div>
+                          <div className="col-span-2 text-right">
+                            <label className="block text-[8px] text-slate-400 uppercase mb-0.5">Harga Jual</label>
+                            <input 
+                              type="number" 
+                              min="0" 
+                              required 
+                              value={item.price} 
+                              onChange={(e) => handleItemChange(idx, 'price', e.target.value)} 
+                              className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-2 py-1.5 rounded-lg text-xs text-right font-mono font-bold" 
+                            />
+                          </div>
+                          <div className="col-span-2 text-right">
+                            <label className="block text-[8px] text-slate-400 uppercase mb-0.5">Total</label>
+                            <span className="font-extrabold text-primary-650 block py-1.5 text-xs font-mono">
+                              {formatRupiah(item.total || 0)}
+                            </span>
+                          </div>
+                          <div className="col-span-1 text-center pt-3">
+                            {items.length > 1 && (
+                              <button type="button" onClick={() => handleRemoveItem(idx)} className="text-red-500 hover:text-red-650 p-1">
+                                <i data-lucide="trash-2" className="w-4 h-4 inline"></i>
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Calculations Grid */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-slate-100 dark:border-slate-855">
+                    <div>
+                      <label className="block text-[10px] text-slate-400 uppercase tracking-wide mb-1">Nominal Potongan Diskon (Rp)</label>
+                      <input type="number" min="0" value={discount} onChange={(e) => setDiscount(e.target.value)} className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-3 py-2 rounded-xl focus:outline-none dark:text-white font-mono" />
+                      
+                      <div className="mt-3">
+                        <label className="block text-[10px] text-slate-400 uppercase tracking-wide mb-1">Pembuat Invoice / Lokasi SPPG</label>
+                        <input 
+                          type="text" 
+                          value={createdByDetail} 
+                          onChange={(e) => setCreatedByDetail(e.target.value)} 
+                          placeholder="misal: SPPG Ngawen Muntilan" 
+                          className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-3 py-2 rounded-xl focus:border-primary-500 focus:outline-none dark:text-white font-semibold text-xs" 
+                        />
+                      </div>
+
+                      <div className="mt-3">
+                        <label className="block text-[10px] text-slate-400 uppercase tracking-wide mb-1">Pajak PT (%)</label>
+                        <input type="number" readOnly value={taxRate} className="w-full bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-3 py-2 rounded-xl focus:outline-none text-amber-600 font-extrabold" />
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3 mt-3">
+                        <div>
+                          <label className="block text-[10px] text-slate-400 uppercase tracking-wide mb-1">Upload TTD Direktur</label>
+                          <input 
+                            type="file" 
+                            accept="image/*" 
+                            onChange={handleFileTtdChange} 
+                            className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-2 py-1.5 rounded-xl text-[10px] font-semibold" 
+                          />
+                          {fileTtdDirektur && <span className="text-[9px] text-green-600 font-bold block mt-0.5">✓ TTD Terunggah</span>}
+                        </div>
+                        <div>
+                          <label className="block text-[10px] text-slate-400 uppercase tracking-wide mb-1">Upload Stempel PT</label>
+                          <input 
+                            type="file" 
+                            accept="image/*" 
+                            onChange={handleFileStempelChange} 
+                            className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-2 py-1.5 rounded-xl text-[10px] font-semibold" 
+                          />
+                          {fileStempel && <span className="text-[9px] text-green-600 font-bold block mt-0.5">✓ Stempel Terunggah</span>}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="bg-slate-50 dark:bg-slate-900 p-4 rounded-xl border border-slate-150 dark:border-slate-800 space-y-2 text-right">
+                      <div className="flex justify-between">
+                        <span className="text-slate-400 font-medium">Subtotal</span>
+                        <span>{formatRupiah(subtotal)}</span>
+                      </div>
+                      <div className="flex justify-between text-green-600">
+                        <span className="text-slate-450 font-medium">Diskon</span>
+                        <span>-{formatRupiah(discount)}</span>
+                      </div>
+                      <div className="flex justify-between text-amber-600">
+                        <span className="text-slate-450 font-medium">Pajak PT (2%)</span>
+                        <span>+{formatRupiah(taxAmount)}</span>
+                      </div>
+                      <div className="border-t border-slate-200 dark:border-slate-700 pt-2 flex justify-between font-extrabold text-sm text-slate-900 dark:text-white">
+                        <span>Grand Total</span>
+                        <span>{formatRupiah(grandTotal)}</span>
+                      </div>
+                    </div>
                   </div>
                 </form>
+
+                {/* Modal Footer (Pinned at Bottom) */}
+                <div className="px-6 py-3.5 bg-slate-50 dark:bg-slate-900 border-t border-slate-100 dark:border-slate-855 flex justify-end gap-3 flex-shrink-0">
+                  <button type="button" onClick={() => setModalOpen(false)} className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-800 text-slate-500 text-xs font-bold hover:bg-slate-100">Batal</button>
+                  <button type="submit" form="invoiceForm" className="px-5 py-2 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-xs font-bold shadow-lg shadow-primary-950/10 flex items-center gap-2">
+                    <i data-lucide="check" className="w-4 h-4"></i>
+                    <span>Simpan & Kurangi Stok</span>
+                  </button>
+                </div>
               </div>
             </div>
           )}
@@ -5500,6 +5691,20 @@
         reader.readAsDataURL(file);
       };
 
+      const handleProsesPO = async (recordId) => {
+        const record = poList.find(p => p.id === recordId);
+        if (record) {
+          const dataToSave = { ...record, status: 'Diproses' };
+          await saveToStore('po', dataToSave);
+          if (logActivity) logActivity('Proses PO', `PO ${record.poNumber} ditandai Sedang Diproses oleh Finance.`);
+          showToast(`Status PO ${record.poNumber} diubah menjadi Diproses.`);
+          reloadData();
+          setTimeout(() => {
+            if (window.lucide) window.lucide.createIcons();
+          }, 100);
+        }
+      };
+
       const handleKirimBarangPO = async (recordId) => {
         const record = poList.find(p => p.id === recordId);
         if (record) {
@@ -6162,6 +6367,7 @@
                             po.status === 'Lunas' ? 'bg-green-100 text-green-700' :
                             po.status === 'Selesai' ? 'bg-teal-100 text-teal-700' :
                             po.status === 'Dikirim' ? 'bg-amber-100 text-amber-700' :
+                            po.status === 'Diproses' ? 'bg-indigo-100 text-indigo-700 border border-indigo-200' :
                             (po.status === 'Belum diproses' || po.status === 'Belum di proses' || po.status === 'Pending' || po.status === 'Draft') ? 'bg-blue-100 text-blue-700' :
                             'bg-red-50 text-red-650'
                           }`}>
@@ -6285,13 +6491,26 @@
                               <span>Ubah PO</span>
                             </button>
                           )}
-                          {(currentUser?.role === 'finance' || currentUser?.role === 'admin') && (po.status === 'Belum diproses' || po.status === 'Belum di proses' || po.status === 'Pending' || po.status === 'Draft') && (
+                          {(currentUser?.role === 'finance' || currentUser?.role === 'admin') && 
+                            (po.status === 'Belum diproses' || po.status === 'Belum di proses' || po.status === 'Pending' || po.status === 'Draft') && (
+                            <button 
+                              onClick={() => handleProsesPO(po.id)}
+                              className="p-1.5 rounded-lg border border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 flex items-center justify-center gap-1 text-[10px] font-extrabold shadow-xs transition-all active:scale-95"
+                              title="Tandai PO Mulai Diproses Finance (Kunci Edit SPPG)"
+                            >
+                              <i data-lucide="play-circle" className="w-3.5 h-3.5"></i>
+                              <span>Proses PO</span>
+                            </button>
+                          )}
+                          {(currentUser?.role === 'finance' || currentUser?.role === 'admin') && 
+                            (po.status === 'Diproses' || po.status === 'Belum diproses' || po.status === 'Belum di proses' || po.status === 'Pending' || po.status === 'Draft') && (
                             <button 
                               onClick={() => handleKirimBarangPO(po.id)}
-                              className="p-1.5 rounded-lg border border-amber-250 bg-amber-50 text-amber-700 hover:bg-amber-100 flex items-center justify-center gap-1 text-[10px] font-extrabold"
+                              className="p-1.5 rounded-lg border border-amber-250 bg-amber-50 text-amber-700 hover:bg-amber-100 flex items-center justify-center gap-1 text-[10px] font-extrabold shadow-xs transition-all active:scale-95"
                               title="Kirim Barang ke SPPG"
                             >
-                              <i data-lucide="truck" className="w-3.5 h-3.5"></i> Kirim Barang
+                              <i data-lucide="truck" className="w-3.5 h-3.5"></i>
+                              <span>Kirim Barang</span>
                             </button>
                           )}
                           {!isReadOnly && !( (currentUser?.role === 'sppg' || currentUser?.role === 'mitra') && (po.status === 'Selesai' || po.status === 'Lunas') ) && (
@@ -6378,7 +6597,7 @@
                     </div>
                     <div>
                       <label className="block text-[10px] text-slate-400 uppercase tracking-wide mb-1">Status PO</label>
-                      <select value={status} onChange={(e) => setStatus(e.target.value)} className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-3 py-2 rounded-xl focus:border-primary-500 focus:outline-none dark:text-white">
+                      <select disabled={currentUser?.role === 'sppg' || currentUser?.role === 'mitra'} value={status} onChange={(e) => setStatus(e.target.value)} className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-3 py-2 rounded-xl focus:border-primary-500 focus:outline-none dark:text-white disabled:bg-slate-100 disabled:opacity-80">
                         <option value="Draft">Draft</option>
                         <option value="Belum di proses">Belum di proses / Pending</option>
                         <option value="Diproses">Diproses</option>
@@ -6436,7 +6655,7 @@
                             >
                               <option value="">-- Pilih Barang --</option>
                               {barangList
-                                .filter(b => !supplierId || b.supplierId === Number(supplierId))
+                                .filter(b => (currentUser?.role === 'sppg' || currentUser?.role === 'mitra') ? true : (!supplierId || b.supplierId === Number(supplierId)))
                                 .map(b => (
                                   <option key={b.id} value={b.id}>{b.name} ({b.unit})</option>
                                 ))}
@@ -6610,13 +6829,15 @@
                 </div>
                 
                 <div className="px-6 py-4 bg-slate-50 dark:bg-slate-900 border-t border-slate-150 dark:border-slate-850 flex justify-end gap-2.5">
-                  {(currentUser?.role === 'sppg' || currentUser?.role === 'mitra' || currentUser?.role === 'admin') && (viewPO.status === 'Belum diproses' || viewPO.status === 'Belum di proses' || viewPO.status === 'Pending' || viewPO.status === 'Draft') && (
+                  {(currentUser?.role === 'sppg' || currentUser?.role === 'mitra' || currentUser?.role === 'admin') && 
+                    viewPO.status !== 'Diproses' && viewPO.status !== 'Dikirim' && viewPO.status !== 'Selesai' && viewPO.status !== 'Lunas' && (
                     <button 
                       onClick={() => {
                         openEditModal(viewPO);
                         setViewPO(null);
                       }}
                       className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-4 py-2.5 rounded-xl flex items-center gap-1.5 shadow-md shadow-blue-950/15"
+                      title="Ubah Rincian & Item PO (Sebelum diproses Finance)"
                     >
                       <i data-lucide="edit-3" className="w-3.5 h-3.5"></i> Ubah PO
                     </button>
