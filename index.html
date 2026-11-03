@@ -352,7 +352,13 @@
 
     // --- SUPABASE CLOUD DATABASE SETUP ---
     const DEFAULT_SUPABASE_URL = 'https://rmicglwqmulpbkvjvduw.supabase.co';
-    const DEFAULT_SUPABASE_KEY = 'sb_secret_UVjtr7nuO7mZlzFSXQPUWA_jiQthDjq'
+    const DEFAULT_SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJtaWNnbHdxbXVscGJrdmp2ZHV3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ3MjgwMjgsImV4cCI6MjEwMDMwNDAyOH0.Ypkd4CPXI4POYZ7hEi_29USe6eYXO_0vYnkywvNSBs0';
+    // Auto-bersihkan kunci lama yang salah (sb_secret_...) jika tersimpan di localStorage browser
+    const storedSupabaseKey = localStorage.getItem('pt_ar_supabase_key');
+    if (storedSupabaseKey && (storedSupabaseKey.startsWith('sb_secret_') || storedSupabaseKey.startsWith('sb_publishable_'))) {
+      localStorage.removeItem('pt_ar_supabase_key');
+    }
+
     let isSupabaseDisabled = localStorage.getItem('pt_ar_supabase_disabled') === 'true';
     let supabaseUrl = isSupabaseDisabled ? '' : (localStorage.getItem('pt_ar_supabase_url') || DEFAULT_SUPABASE_URL);
     let supabaseKey = isSupabaseDisabled ? '' : (localStorage.getItem('pt_ar_supabase_key') || DEFAULT_SUPABASE_KEY);
@@ -2383,7 +2389,10 @@
                     Cloud Supabase (Online)
                   </span>
                 ) : cloudStatus === 'error' ? (
-                  <span className="inline-flex items-center gap-1.5 text-[10px] bg-rose-50 text-rose-700 dark:bg-rose-950/30 dark:text-rose-300 px-2.5 py-0.5 rounded-full font-bold border border-rose-200 dark:border-rose-800 shadow-xs" title={cloudErrorMsg ? `Supabase Error: ${cloudErrorMsg}. Data dialihkan ke memori lokal.` : 'Supabase Terputus: Kunci API salah / 401. Data dialihkan ke lokal.'}>
+                  <span 
+                    onClick={() => alert('Status Koneksi Supabase:\n\n' + (cloudErrorMsg || 'Kunci API salah atau ditolak (Error 401).\nPastikan menggunakan anon public key (diawali eyJ...) pada baris 355 index.html.'))}
+                    className="inline-flex items-center gap-1.5 text-[10px] bg-rose-50 text-rose-700 dark:bg-rose-950/30 dark:text-rose-300 px-2.5 py-0.5 rounded-full font-bold border border-rose-200 dark:border-rose-800 shadow-xs cursor-pointer active:scale-95 transition-transform" 
+                    title={cloudErrorMsg ? `Supabase Error: ${cloudErrorMsg}. Klik untuk detail.` : 'Supabase Terputus: Kunci API salah / 401. Klik untuk detail.'}>
                     <span className="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
                     Supabase Error (Lokal)
                   </span>
