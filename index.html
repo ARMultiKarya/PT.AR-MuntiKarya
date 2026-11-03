@@ -4093,80 +4093,38 @@
       };
 
       const getPriceForWeek = (bId, targetYear, targetMonth, targetWeek, type) => {
-        // Cari entri harga untuk barang ini yang tanggal efektifnya jatuh di tahun & bulan target
-        const entriesInMonth = priceLists.filter(p => {
-          if (p.barangId !== bId) return false;
-          const parts = p.effectiveDate.split('-');
-          if (parts.length < 2) return false;
-          const pYear = Number(parts[0]);
-          const pMonthIdx = Number(parts[1]) - 1;
-          return pYear === targetYear && pMonthIdx === targetMonth;
-        });
-
         const firstDayOfMonth = new Date(targetYear, targetMonth, 1);
         const startDayOfWeek = firstDayOfMonth.getDay();
-
-        // Sembunyikan jika minggu tersebut berada di masa depan dibandingkan hari ini,
-        // KECUALI jika pengguna sengaja meng-input ketentuan harga khusus untuk minggu masa depan tersebut.
-        const hasExplicitPriceInWeek = entriesInMonth.some(p => {
-          const parts = p.effectiveDate.split('-');
-          const pDay = Number(parts[2]);
-          const daysInFirstWeek = 7 - startDayOfWeek;
-          let pWeekIdx;
-          if (pDay <= daysInFirstWeek) {
-            pWeekIdx = 1;
-          } else {
-            pWeekIdx = 1 + Math.ceil((pDay - daysInFirstWeek) / 7);
-          }
-          return pWeekIdx === targetWeek;
-        });
-
-        let startDayOfMonth;
-        if (targetWeek === 1) {
-          startDayOfMonth = 1;
-        } else {
-          const daysInFirstWeek = 7 - startDayOfWeek;
-          startDayOfMonth = daysInFirstWeek + (targetWeek - 2) * 7 + 1;
-        }
-
-        const today = new Date();
-        const targetWeekStartDate = new Date(targetYear, targetMonth, startDayOfMonth);
-
-        if (targetWeekStartDate > today && !hasExplicitPriceInWeek) {
-          return 0;
-        }
-
-        if (entriesInMonth.length === 0) {
-          return 0;
-        }
+        const daysInFirstWeek = 7 - startDayOfWeek;
         
-        let endDayOfMonth;
-        if (targetWeek === 1) {
-          endDayOfMonth = 7 - startDayOfWeek;
-        } else {
-          const daysInFirstWeek = 7 - startDayOfWeek;
-          endDayOfMonth = daysInFirstWeek + (targetWeek - 2) * 7 + 7;
-        }
-        
+        let startDayOfMonth = targetWeek === 1 ? 1 : (daysInFirstWeek + (targetWeek - 2) * 7 + 1);
+        let endDayOfMonth = targetWeek === 1 ? daysInFirstWeek : (daysInFirstWeek + (targetWeek - 2) * 7 + 7);
         const totalDays = new Date(targetYear, targetMonth + 1, 0).getDate();
-        if (endDayOfMonth > totalDays) {
-          endDayOfMonth = totalDays;
-        }
+        if (endDayOfMonth > totalDays) endDayOfMonth = totalDays;
+
+        const targetWeekEndStr = `${targetYear}-${String(targetMonth + 1).padStart(2, '0')}-${String(endDayOfMonth).padStart(2, '0')}`;
         
-        // Filter entri dalam bulan ini yang tanggal berlakunya kurang dari atau sama dengan hari terakhir minggu target
-        const validEntries = entriesInMonth.filter(p => {
-          const parts = p.effectiveDate.split('-');
-          const pDay = Number(parts[2]);
-          return pDay <= endDayOfMonth;
+        // Cari semua entri harga untuk barang ini yang tanggal berlakunya <= akhir minggu target
+        const validEntries = priceLists.filter(p => {
+          if (p.barangId !== bId) return false;
+          if (!p.effectiveDate) return false;
+          return p.effectiveDate <= targetWeekEndStr;
         });
-        
+
         if (validEntries.length === 0) {
           return 0;
         }
-        
+
+        // Urutkan dari tanggal berlaku paling baru
         validEntries.sort((a, b) => b.effectiveDate.localeCompare(a.effectiveDate));
         const latest = validEntries[0];
-        return type === 'jual' ? latest.hargaJual : latest.hargaBeli;
+
+        // Jika ada batas tanggal selesai (effectiveDateEnd) dan sudah berakhir sebelum minggu target
+        if (latest.effectiveDateEnd && latest.effectiveDateEnd < `${targetYear}-${String(targetMonth + 1).padStart(2, '0')}-${String(startDayOfMonth).padStart(2, '0')}`) {
+          return 0;
+        }
+
+        return type === 'jual' ? (latest.hargaJual || 0) : (latest.hargaBeli || 0);
       };
 
       const handleSave = async (e) => {
@@ -4307,17 +4265,26 @@
                 continue;
               }
 
-              const matchedBarang = barangList.find(b => 
+              let matchedBarang = barangList.find(b => 
                 b.name.toLowerCase() === rBarangName.toLowerCase() ||
                 b.name.toLowerCase().includes(rBarangName.toLowerCase()) ||
                 b.code.toLowerCase() === rBarangName.toLowerCase()
               );
               
               if (!matchedBarang) {
-                if (!skippedNotFoundNames.includes(rBarangName)) {
-                  skippedNotFoundNames.push(rBarangName);
-                }
-                continue;
+                // Auto-buat barang baru jika belum terdaftar di master barang
+                const newBarangData = {
+                  code: 'BRG-' + String(barangList.length + importedCount + 1).padStart(3, '0'),
+                  name: rBarangName,
+                  unit: 'KG',
+                  stock: 100,
+                  kategori: 'Bahan Baku',
+                  supplierId: suppliers[0] ? suppliers[0].id : 73,
+                  notes: 'Dibuat otomatis dari Import Price List'
+                };
+                const newBId = await saveToStore('barang', newBarangData);
+                matchedBarang = { ...newBarangData, id: newBId };
+                barangList.push(matchedBarang);
               }
 
               // Normalisasi format tanggal jika mm/dd/yyyy
