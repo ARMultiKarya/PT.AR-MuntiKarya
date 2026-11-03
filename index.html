@@ -353,13 +353,21 @@
     // --- SUPABASE CLOUD DATABASE SETUP ---
     const DEFAULT_SUPABASE_URL = 'https://rmicglwqmulpbkvjvduw.supabase.co';
     const DEFAULT_SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJtaWNnbHdxbXVscGJrdmp2ZHV3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ3MjgwMjgsImV4cCI6MjEwMDMwNDAyOH0.Ypkd4CPXI4POYZ7hEi_29USe6eYXO_0vYnkywvNSBs0';
-    // Auto-bersihkan kunci lama yang salah (sb_secret_...) jika tersimpan di localStorage browser
+    // Auto-sinkronkan kredensial Supabase resmi: jika di browser/HP tersimpan kunci lama yang berbeda atau disabled, bersihkan otomatis agar HP & PC selalu terhubung ke cloud resmi yang sama
     const storedSupabaseKey = localStorage.getItem('pt_ar_supabase_key');
-    if (storedSupabaseKey && (storedSupabaseKey.startsWith('sb_secret_') || storedSupabaseKey.startsWith('sb_publishable_'))) {
+    if (storedSupabaseKey && storedSupabaseKey !== DEFAULT_SUPABASE_KEY) {
+      console.log('Resetting outdated Supabase key in localStorage to official key.');
       localStorage.removeItem('pt_ar_supabase_key');
     }
+    const storedSupabaseUrl = localStorage.getItem('pt_ar_supabase_url');
+    if (storedSupabaseUrl && storedSupabaseUrl !== DEFAULT_SUPABASE_URL) {
+      localStorage.removeItem('pt_ar_supabase_url');
+    }
+    if (localStorage.getItem('pt_ar_supabase_disabled') === 'true') {
+      localStorage.removeItem('pt_ar_supabase_disabled');
+    }
 
-    let isSupabaseDisabled = localStorage.getItem('pt_ar_supabase_disabled') === 'true';
+    let isSupabaseDisabled = false;
     let supabaseUrl = isSupabaseDisabled ? '' : (localStorage.getItem('pt_ar_supabase_url') || DEFAULT_SUPABASE_URL);
     let supabaseKey = isSupabaseDisabled ? '' : (localStorage.getItem('pt_ar_supabase_key') || DEFAULT_SUPABASE_KEY);
     let supabaseClient = null;
@@ -1315,8 +1323,9 @@
     ];
 
     async function seedDatabaseIfEmpty() {
-      // Jika database sudah pernah diinisialisasi, jangan masukkan data demo lagi jika pengguna menghapusnya
-      if (localStorage.getItem('pt_ar_db_initialized') === 'true') {
+      // Jika database sudah pernah diinisialisasi atau menggunakan Supabase Cloud, jangan masukkan demo data
+      if (supabaseClient || localStorage.getItem('pt_ar_db_initialized') === 'true') {
+        localStorage.setItem('pt_ar_db_initialized', 'true');
         return;
       }
       const existingSettings = await getAllFromStore('settings');
@@ -4571,6 +4580,7 @@
                       <th className="py-4 px-6">Nama Barang & Spesifikasi</th>
                       <th className="py-4 px-6">Kategori</th>
                       <th className="py-4 px-4 text-center">Satuan</th>
+                      <th className="py-4 px-6 text-right">Harga Satuan (Est)</th>
                       <th className="py-4 px-6 text-center">Status Stok</th>
                       <th className="py-4 px-6 text-right">Stok Tersedia</th>
                       <th className="py-4 px-6 text-center w-36">Aksi</th>
@@ -4579,7 +4589,7 @@
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-900/50 font-semibold">
                     {sppgFiltered.length === 0 ? (
                       <tr>
-                        <td colSpan="8" className="py-12 text-center text-slate-400 font-medium italic">
+                        <td colSpan="9" className="py-12 text-center text-slate-400 font-medium italic">
                           Tidak ada barang ditemukan yang sesuai dengan pencarian atau filter.
                         </td>
                       </tr>
@@ -4611,6 +4621,17 @@
                             </td>
                             <td className="py-4 px-4 text-center font-bold text-slate-600 dark:text-slate-300 uppercase">
                               {b.unit || '-'}
+                            </td>
+                            <td className="py-4 px-6 text-right font-mono font-bold">
+                              {(() => {
+                                const m = priceLists.filter(p => p.barangId === b.id).sort((x, y) => new Date(y.effectiveDate) - new Date(x.effectiveDate));
+                                const pVal = m.length > 0 ? (m[0].hargaJual || 0) : 0;
+                                return pVal > 0 ? (
+                                  <span className="text-primary-600 dark:text-primary-400 font-black">{formatRupiah(pVal)}</span>
+                                ) : (
+                                  <span className="text-slate-400 text-[10px] italic font-normal">Belum diatur</span>
+                                );
+                              })()}
                             </td>
                             <td className="py-4 px-6 text-center">
                               {isReady && (
@@ -5191,6 +5212,7 @@
       const [jenis, setJenis] = React.useState('Barang');
       const [deskripsi, setDeskripsi] = React.useState('');
       const [customerId, setCustomerId] = React.useState('');
+      const [customerNameManual, setCustomerNameManual] = React.useState('');
       const [createdByDetail, setCreatedByDetail] = React.useState('');
       const [budgetLimit, setBudgetLimit] = React.useState('');
       const [poItems, setPoItems] = React.useState([{ barangId: '', qty: 1, price: 0, total: 0 }]);
@@ -5251,8 +5273,9 @@
         let defaultDetail = '';
         if (currentUser?.role === 'sppg') {
           const match = customers.find(c => c.id === currentUser.customerId);
-          defaultDetail = match ? match.name : 'SPPG ' + currentUser.username;
+          defaultDetail = match ? match.name : (currentUser.username ? currentUser.username.toUpperCase() + ' - SPPG' : 'SPPG');
         }
+        setCustomerNameManual(currentUser?.role === 'sppg' ? defaultDetail : '');
         setCreatedByDetail(defaultDetail);
         setPoItems([{ barangId: '', qty: 1, price: 0, total: 0 }]);
         setModalOpen(true);
@@ -5268,14 +5291,23 @@
         setJenis(po.jenis || 'Barang');
         setDeskripsi(po.deskripsi || '');
         setCustomerId(String(po.customerId || ''));
+        const matchedCust = customers.find(c => c.id === po.customerId);
+        setCustomerNameManual(matchedCust ? matchedCust.name : (po.createdByDetail || ''));
         setBudgetLimit(po.budgetLimit ? String(po.budgetLimit) : '');
         setCreatedByDetail(po.createdByDetail || '');
-        setPoItems(po.items.map(it => ({
-          barangId: String(it.barangId),
-          qty: it.qty,
-          price: it.price,
-          total: it.total
-        })));
+        const itemsToLoad = (po.items && po.items.length > 0)
+          ? po.items.map(it => {
+              const q = Number(it.qty) || 1;
+              const pr = Number(it.price) || 0;
+              return {
+                barangId: String(it.barangId),
+                qty: q,
+                price: pr,
+                total: q * pr
+              };
+            })
+          : [{ barangId: '', qty: 1, price: 0, total: 0 }];
+        setPoItems(itemsToLoad);
         setModalOpen(true);
       };
 
@@ -5329,8 +5361,43 @@
 
       const handleSave = async (e) => {
         e.preventDefault();
-        if (!customerId || poItems.some(item => !item.barangId)) {
-          alert('Harap lengkapi isian customer & barang!');
+
+        let finalCustomerId = null;
+        let finalDetail = (createdByDetail || '').trim();
+
+        if (currentUser?.role === 'sppg') {
+          const typedName = (customerNameManual || createdByDetail || currentUser.username).trim();
+          if (!typedName) {
+            alert('Harap isi Nama Pemesan!');
+            return;
+          }
+          finalDetail = typedName;
+          const match = customers.find(c => c.name.toLowerCase() === typedName.toLowerCase());
+          if (match) {
+            finalCustomerId = match.id;
+          } else {
+            try {
+              finalCustomerId = await saveToStore('customers', {
+                name: typedName,
+                company: typedName,
+                phone: currentUser.whatsapp || '',
+                email: '',
+                address: ''
+              });
+            } catch(e) {
+              finalCustomerId = null;
+            }
+          }
+        } else {
+          if (!customerId) {
+            alert('Harap pilih Nama Pemesan!');
+            return;
+          }
+          finalCustomerId = Number(customerId) || null;
+        }
+
+        if (poItems.some(item => !item.barangId)) {
+          alert('Harap pilih barang untuk setiap baris pesanan!');
           return;
         }
 
@@ -5359,15 +5426,15 @@
           status,
           jenis,
           deskripsi,
-          createdByDetail,
+          createdByDetail: finalDetail,
           createdBy: currentUser.username,
-          customerId: Number(customerId),
+          customerId: finalCustomerId,
           budgetLimit: budgetLimit ? Number(budgetLimit) : 0,
           items: poItems.map(it => ({
             barangId: Number(it.barangId),
             qty: Number(it.qty),
-            price: Number(it.price),
-            total: Number(it.qty) * Number(it.price)
+            price: Number(it.price) || 0,
+            total: (Number(it.qty) || 0) * (Number(it.price) || 0)
           })),
           totalAmount: currentTotal
         };
@@ -6207,13 +6274,15 @@
                           >
                             <i data-lucide="eye" className="w-3.5 h-3.5"></i>
                           </button>
-                          {(currentUser?.role === 'sppg' || currentUser?.role === 'mitra' || currentUser?.role === 'admin') && (po.status === 'Belum diproses' || po.status === 'Belum di proses' || po.status === 'Pending' || po.status === 'Draft') && (
+                          {(currentUser?.role === 'sppg' || currentUser?.role === 'mitra' || currentUser?.role === 'admin') && 
+                            po.status !== 'Diproses' && po.status !== 'Dikirim' && po.status !== 'Selesai' && po.status !== 'Lunas' && (
                             <button 
                               onClick={() => openEditModal(po)}
-                              className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-800 text-slate-500 hover:text-blue-600 hover:border-blue-200 flex items-center justify-center"
-                              title="Ubah PO"
+                              className="p-1.5 rounded-lg border border-blue-200 bg-blue-50 text-blue-600 hover:bg-blue-100 flex items-center justify-center gap-1 text-[10px] font-bold shadow-xs transition-all active:scale-95"
+                              title="Ubah Rincian & Item PO (Sebelum diproses Finance)"
                             >
                               <i data-lucide="edit-3" className="w-3.5 h-3.5"></i>
+                              <span>Ubah PO</span>
                             </button>
                           )}
                           {(currentUser?.role === 'finance' || currentUser?.role === 'admin') && (po.status === 'Belum diproses' || po.status === 'Belum di proses' || po.status === 'Pending' || po.status === 'Draft') && (
@@ -6286,13 +6355,26 @@
                       />
                     </div>
                     <div>
-                      <label className="block text-[10px] text-slate-400 uppercase tracking-wide mb-1">Nama Pemesan *</label>
-                      <select required disabled={currentUser?.role === 'mitra' || !!currentUser?.customerId} value={customerId} onChange={(e) => setCustomerId(e.target.value)} className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-3 py-2 rounded-xl focus:border-primary-500 focus:outline-none dark:text-white text-xs font-semibold disabled:opacity-75 disabled:bg-slate-50">
-                        <option value="">-- Pilih Nama Pemesan --</option>
-                        {customers.map(c => (
-                          <option key={c.id} value={c.id}>{c.name}</option>
-                        ))}
-                      </select>
+                      <label className="block text-[10px] text-slate-400 uppercase tracking-wide mb-1">
+                        Nama Pemesan {currentUser?.role === 'sppg' ? '(Tulis Manual) *' : '*'}
+                      </label>
+                      {currentUser?.role === 'sppg' ? (
+                        <input 
+                          type="text" 
+                          required 
+                          placeholder="Ketik Nama Pemesan / SPPG..." 
+                          value={customerNameManual} 
+                          onChange={(e) => setCustomerNameManual(e.target.value)} 
+                          className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-3 py-2 rounded-xl focus:border-primary-500 focus:outline-none dark:text-white text-xs font-semibold" 
+                        />
+                      ) : (
+                        <select required disabled={currentUser?.role === 'mitra' || !!currentUser?.customerId} value={customerId} onChange={(e) => setCustomerId(e.target.value)} className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-3 py-2 rounded-xl focus:border-primary-500 focus:outline-none dark:text-white text-xs font-semibold disabled:opacity-75 disabled:bg-slate-50">
+                          <option value="">-- Pilih Nama Pemesan --</option>
+                          {customers.map(c => (
+                            <option key={c.id} value={c.id}>{c.name}</option>
+                          ))}
+                        </select>
+                      )}
                     </div>
                     <div>
                       <label className="block text-[10px] text-slate-400 uppercase tracking-wide mb-1">Status PO</label>
@@ -6372,8 +6454,16 @@
                             />
                           </div>
                           <div className="col-span-2 text-right">
-                            <span className="block text-[8px] text-slate-455">Harga (Est)</span>
-                            <span className="font-bold">{formatRupiah(item.price || 0)}</span>
+                            <span className="block text-[8px] text-slate-455 mb-0.5">Harga (Est)</span>
+                            <input 
+                              type="number" 
+                              min="0"
+                              placeholder="0"
+                              value={item.price !== undefined ? item.price : ''} 
+                              onChange={(e) => handleItemChange(idx, 'price', e.target.value)}
+                              className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-2 py-1 rounded text-xs text-right font-mono font-bold"
+                              title="Harga satuan (otomatis ditarik dari katalog, atau bisa diisi manual jika kosong)"
+                            />
                           </div>
                           <div className="col-span-2 text-right">
                             <span className="block text-[8px] text-slate-455">Subtotal</span>
