@@ -720,6 +720,7 @@
                 await client.from('invoice_jual_items').insert(itemsToInsert);
               }
             }
+            await saveLocalToStore(storeName, { ...data, id: finalId });
             return finalId;
           })
           .catch(err => {
@@ -742,11 +743,19 @@
           .from(storeName)
           .delete()
           .eq('id', key)
-          .then(({ error }) => {
+          .then(async ({ error }) => {
             if (error) {
               console.error(`Supabase error deleting ${storeName}/${key}:`, error);
               throw error;
             }
+            if (storeName === 'po') {
+              await supabaseClient.from('po_items').delete().eq('poId', key).catch(() => {});
+            } else if (storeName === 'bukti_pembelian') {
+              await supabaseClient.from('bukti_pembelian_items').delete().eq('buktiPembelianId', key).catch(() => {});
+            } else if (storeName === 'invoice_jual') {
+              await supabaseClient.from('invoice_jual_items').delete().eq('invoiceJualId', key).catch(() => {});
+            }
+            await deleteLocalFromStore(storeName, key);
           })
           .catch(err => {
             console.warn(`Supabase delete failed for ${storeName}/${key}, falling back to local DB:`, err);
@@ -1266,6 +1275,16 @@
     ];
 
     async function seedDatabaseIfEmpty() {
+      // Jika database sudah pernah diinisialisasi, jangan masukkan data demo lagi jika pengguna menghapusnya
+      if (localStorage.getItem('pt_ar_db_initialized') === 'true') {
+        return;
+      }
+      const existingSettings = await getAllFromStore('settings');
+      if (existingSettings && existingSettings.length > 0) {
+        localStorage.setItem('pt_ar_db_initialized', 'true');
+        return;
+      }
+
       const suppliers = await getAllFromStore('suppliers');
       if (suppliers.length === 0) {
         for (const s of SEED_SUPPLIERS) await saveToStore('suppliers', s);
@@ -1284,6 +1303,7 @@
           action: 'Sistem Diinisialisasi',
           details: 'Data awal untuk PT AR MULTI KARYA berhasil dimasukkan.'
         });
+        localStorage.setItem('pt_ar_db_initialized', 'true');
       }
 
       const users = await getAllFromStore('users');
