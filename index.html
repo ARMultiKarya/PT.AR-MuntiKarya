@@ -374,6 +374,40 @@
     }
     initSupabase();
 
+    let supabaseHealthStatus = 'checking';
+    let supabaseHealthError = '';
+
+    async function checkSupabaseHealth() {
+      if (!supabaseClient) {
+        supabaseHealthStatus = 'offline';
+        return { ok: false, error: 'Supabase belum dikonfigurasi' };
+      }
+      try {
+        const { data, error } = await supabaseClient.from('suppliers').select('id').limit(1);
+        if (error) {
+          supabaseHealthStatus = 'error';
+          let msg = error.message || error.hint || error.details || JSON.stringify(error);
+          if (error.code === 'PGRST301' || msg.includes('JWT') || msg.includes('API key') || error.status === 401 || msg.includes('Unregistered API key')) {
+            msg = 'Kunci API Supabase tidak valid (Error 401). Pastikan menggunakan "anon public key" (diawali eyJ...), bukan secret token.';
+          } else if (msg.includes('relation') && msg.includes('does not exist')) {
+            msg = 'Tabel belum dibuat di database Supabase. Jalankan skrip schema_supabase.sql di menu SQL Editor.';
+          }
+          supabaseHealthError = msg;
+          console.error('Supabase Health Error:', supabaseHealthError);
+          return { ok: false, error: supabaseHealthError };
+        }
+        supabaseHealthStatus = 'online';
+        supabaseHealthError = '';
+        console.log('Supabase Health: ONLINE & CONNECTED!');
+        return { ok: true };
+      } catch (err) {
+        supabaseHealthStatus = 'error';
+        supabaseHealthError = err.message || 'Gagal menghubungi server Supabase';
+        console.error('Supabase Health Exception:', err);
+        return { ok: false, error: supabaseHealthError };
+      }
+    }
+
     // --- MYSQL DATABASE SETUP ---
     // Ubah URL di bawah ini dengan URL api.php / server Node.js Anda yang online agar semua HP/perangkat otomatis terhubung ke MySQL tanpa input manual di menu Pengaturan.
     const DEFAULT_MYSQL_API_URL = ''; 
@@ -1877,6 +1911,10 @@
       const [chatMessages, setChatMessages] = React.useState([]);
       const [settings, setSettings] = React.useState(DEFAULT_SETTINGS);
 
+      // Cloud connection status state
+      const [cloudStatus, setCloudStatus] = React.useState('checking');
+      const [cloudErrorMsg, setCloudErrorMsg] = React.useState('');
+
       // Toast states
       const [toasts, setToasts] = React.useState([]);
 
@@ -1944,6 +1982,16 @@
             localStorage.removeItem('pt_ar_user');
           }
         }
+
+        checkSupabaseHealth().then(res => {
+          if (res.ok) {
+            setCloudStatus('online');
+            setCloudErrorMsg('');
+          } else {
+            setCloudStatus(supabaseClient ? 'error' : 'offline');
+            setCloudErrorMsg(res.error || '');
+          }
+        });
 
         seedDatabaseIfEmpty().then(() => {
           reloadData();
@@ -2329,10 +2377,20 @@
                   />
                 </div>
                 <div className="h-6 w-px bg-slate-200 dark:bg-slate-800" />
-                {supabaseClient ? (
-                  <span className="inline-flex items-center gap-1.5 text-[10px] bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300 px-2.5 py-0.5 rounded-full font-bold border border-emerald-200 dark:border-emerald-800 shadow-xs" title="Terhubung ke Database Cloud Supabase">
+                {cloudStatus === 'online' ? (
+                  <span className="inline-flex items-center gap-1.5 text-[10px] bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300 px-2.5 py-0.5 rounded-full font-bold border border-emerald-200 dark:border-emerald-800 shadow-xs" title="Terhubung ke Database Cloud Supabase (Sinkron Aktif)">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
                     Cloud Supabase (Online)
+                  </span>
+                ) : cloudStatus === 'error' ? (
+                  <span className="inline-flex items-center gap-1.5 text-[10px] bg-rose-50 text-rose-700 dark:bg-rose-950/30 dark:text-rose-300 px-2.5 py-0.5 rounded-full font-bold border border-rose-200 dark:border-rose-800 shadow-xs" title={cloudErrorMsg ? `Supabase Error: ${cloudErrorMsg}. Data dialihkan ke memori lokal.` : 'Supabase Terputus: Kunci API salah / 401. Data dialihkan ke lokal.'}>
+                    <span className="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
+                    Supabase Error (Lokal)
+                  </span>
+                ) : cloudStatus === 'checking' ? (
+                  <span className="inline-flex items-center gap-1.5 text-[10px] bg-slate-50 text-slate-700 dark:bg-slate-900 dark:text-slate-300 px-2.5 py-0.5 rounded-full font-bold border border-slate-200 dark:border-slate-800 shadow-xs">
+                    <span className="w-1.5 h-1.5 rounded-full bg-slate-400 animate-pulse"></span>
+                    Menghubungkan...
                   </span>
                 ) : mysqlApiUrl ? (
                   <span className="inline-flex items-center gap-1.5 text-[10px] bg-sky-50 text-sky-700 dark:bg-sky-950/30 dark:text-sky-300 px-2.5 py-0.5 rounded-full font-bold border border-sky-200 dark:border-sky-800 shadow-xs" title="Terhubung ke MySQL Gateway">
@@ -2527,6 +2585,10 @@
                   reloadData={reloadData} 
                   logActivity={logActivity}
                   showToast={showToast}
+                  cloudStatus={cloudStatus}
+                  setCloudStatus={setCloudStatus}
+                  cloudErrorMsg={cloudErrorMsg}
+                  setCloudErrorMsg={setCloudErrorMsg}
                 />
               )}
               {currentModule === 'profile_settings' && (
@@ -12147,7 +12209,7 @@ function RekapLabaRugiModule({ invoices, buktiPembelian, globalSearch, settings,
     // ==========================================
     // 13. SETTINGS & UTILITY MODULE
     // ==========================================
-    function SettingsModule({ settings, reloadData, logActivity, showToast }) {
+    function SettingsModule({ settings, reloadData, logActivity, showToast, cloudStatus, setCloudStatus, cloudErrorMsg, setCloudErrorMsg }) {
       const [name, setName] = React.useState(settings.name);
       const [address, setAddress] = React.useState(settings.address);
       const [phone, setPhone] = React.useState(settings.phone);
@@ -12186,29 +12248,35 @@ function RekapLabaRugiModule({ invoices, buktiPembelian, globalSearch, settings,
         reloadData();
       };
 
-      const handleSaveSupabase = (e) => {
+      const handleSaveSupabase = async (e) => {
         e.preventDefault();
-        let cleanedUrl = sUrl.trim();
-        // Hapus trailing slash jika ada
-        if (cleanedUrl.endsWith('/')) {
-          cleanedUrl = cleanedUrl.slice(0, -1);
+        let cleanedUrl = sUrl.trim().replace(/\/rest\/v1\/?$/, '').replace(/\/+$/, '');
+        const trimmedKey = sKey.trim();
+
+        if (trimmedKey.startsWith('sb_secret_') || trimmedKey.startsWith('sb_publishable_')) {
+          showToast('⚠️ Kunci yang dimasukkan adalah Secret/Management Token. Gunakan "anon public key" (diawali eyJ...) dari Supabase.', 'error');
+          return;
         }
-        // Hapus path /rest/v1 jika tidak sengaja ter-copy
-        if (cleanedUrl.endsWith('/rest/v1')) {
-          cleanedUrl = cleanedUrl.slice(0, -8);
-        }
-        // Hapus trailing slash lagi setelah membersihkan /rest/v1 (untuk jaga-jaga)
-        if (cleanedUrl.endsWith('/')) {
-          cleanedUrl = cleanedUrl.slice(0, -1);
-        }
+
         localStorage.removeItem('pt_ar_supabase_disabled');
         localStorage.setItem('pt_ar_supabase_url', cleanedUrl);
-        localStorage.setItem('pt_ar_supabase_key', sKey.trim());
+        localStorage.setItem('pt_ar_supabase_key', trimmedKey);
         supabaseUrl = cleanedUrl;
-        supabaseKey = sKey.trim();
+        supabaseKey = trimmedKey;
         isSupabaseDisabled = false;
         initSupabase();
-        showToast('Koneksi Supabase berhasil diperbarui.');
+
+        showToast('Memeriksa koneksi ke Supabase...', 'info');
+        const health = await checkSupabaseHealth();
+        if (health.ok) {
+          if (setCloudStatus) setCloudStatus('online');
+          if (setCloudErrorMsg) setCloudErrorMsg('');
+          showToast('✅ Berhasil terhubung ke Supabase Cloud!', 'success');
+        } else {
+          if (setCloudStatus) setCloudStatus('error');
+          if (setCloudErrorMsg) setCloudErrorMsg(health.error);
+          showToast(`❌ Supabase Error: ${health.error}`, 'error');
+        }
         reloadData();
       };
 
@@ -12220,9 +12288,11 @@ function RekapLabaRugiModule({ invoices, buktiPembelian, globalSearch, settings,
         setSKey('');
         supabaseUrl = '';
         supabaseKey = '';
-        isSupabaseDisabled = true;
         supabaseClient = null;
-        showToast('Koneksi Supabase dinonaktifkan.');
+        isSupabaseDisabled = true;
+        if (setCloudStatus) setCloudStatus('offline');
+        if (setCloudErrorMsg) setCloudErrorMsg('');
+        showToast('Koneksi Supabase dinonaktifkan. Menggunakan penyimpanan lokal.', 'info');
         reloadData();
       };
 
@@ -12555,15 +12625,18 @@ function RekapLabaRugiModule({ invoices, buktiPembelian, globalSearch, settings,
                   />
                 </div>
                 <div>
-                  <label className="block text-[10px] text-slate-450 uppercase mb-1">Supabase Anon Key</label>
+                  <label className="block text-[10px] text-slate-450 uppercase mb-1">Supabase Anon Key (Public)</label>
                   <input 
                     type="password" 
                     required 
-                    placeholder="Masukkan public anon key" 
+                    placeholder="Salin anon public key (diawali eyJhbGciOi...)" 
                     value={sKey} 
                     onChange={(e) => setSKey(e.target.value)} 
-                    className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-3 py-2 rounded-xl focus:border-primary-500 focus:outline-none dark:text-white"
+                    className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-3 py-2 rounded-xl focus:border-primary-500 focus:outline-none dark:text-white font-mono text-[11px]"
                   />
+                  <p className="text-[10px] text-amber-600 dark:text-amber-400 mt-1 font-normal leading-normal">
+                    ⚠️ <b>Wajib menggunakan "anon" "public" key</b> (kunci panjang yang diawali <code>eyJhbGciOi...</code> dari menu Project Settings &gt; Data API). Jangan gunakan kunci yang diawali <code>sb_secret_...</code>.
+                  </p>
                 </div>
                 <div className="flex gap-2">
                   <button 
