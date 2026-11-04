@@ -715,10 +715,12 @@
         if (mainData.id === undefined || mainData.id === null || mainData.id === '') {
           delete mainData.id;
         }
-        let savePromise = client
-          .from(storeName)
-          .upsert(mainData)
-          .select();
+        let savePromise;
+        if (originalId !== undefined && originalId !== null && originalId !== '') {
+          savePromise = client.from(storeName).upsert(mainData).select();
+        } else {
+          savePromise = client.from(storeName).insert(mainData).select();
+        }
 
         return savePromise
           .then(async ({ data: savedRows, error }) => {
@@ -1277,24 +1279,3886 @@
     ];
 
     const SEED_SUPPLIERS = [
-      { id: 1, name: 'PT Semen Sentosa', code: 'SPL-001', phone: '081122334455', email: 'sales@semensentosa.com', address: 'Kawasan Industri Candi, Semarang' },
+      { id: 1, name: 'PT Pangan Segar Nusantara (Supplier Utama)', code: 'SPL-001', phone: '081122334455', email: 'sales@pangansegar.com', address: 'Muntilan, Magelang' },
       { id: 2, name: 'CV Pasir Agung', code: 'SPL-002', phone: '081234560001', email: 'cvpasiragung@gmail.com', address: 'Muntilan, Magelang' },
       { id: 3, name: 'UD Kayu Rapi', code: 'SPL-003', phone: '082155667788', email: 'kayurapi@outlook.com', address: 'Secang, Magelang' }
     ];
 
     const SEED_BARANG = [
-      { id: 1, supplierId: 1, code: 'BRG-SMN', name: 'Semen Gresik 50kg', unit: 'SAK', stock: 150, notes: 'Semen tipe PCC' },
-      { id: 2, supplierId: 2, code: 'BRG-PSR', name: 'Pasir Merapi Merah', unit: 'M3', stock: 45, notes: 'Pasir cor kualitas premium' },
-      { id: 3, supplierId: 3, code: 'BRG-KYU', name: 'Balok Kayu Sengon 4x6x400', unit: 'PCS', stock: 80, notes: 'Kayu kering oven' },
-      { id: 4, supplierId: 1, code: 'BRG-BTN', name: 'Besi Beton 8mm', unit: 'BATANG', stock: 200, notes: 'Besi SNI standar beton cor' }
-    ];
+  {
+    "id": 1,
+    "supplierId": 1,
+    "code": "BRG-BRS",
+    "name": "BERAS",
+    "unit": "KG",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 2,
+    "supplierId": 1,
+    "code": "BRG-BMBY",
+    "name": "BAWANG BOMBAY",
+    "unit": "KG",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 3,
+    "supplierId": 1,
+    "code": "BRG-BWGMRH",
+    "name": "BAWANG MERAH",
+    "unit": "KG",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 4,
+    "supplierId": 1,
+    "code": "BRG-B",
+    "name": "BAWANG MERAH (KUPAS)",
+    "unit": "KG",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 5,
+    "supplierId": 1,
+    "code": "BRG-KEM",
+    "name": "BAWANG PUTIH",
+    "unit": "KG",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 6,
+    "supplierId": 1,
+    "code": "BRG-PUT",
+    "name": "BAWANG PUTIH (KUPAS)",
+    "unit": "KG",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 7,
+    "supplierId": 1,
+    "code": "BRG-TSA",
+    "name": "BROKOLI",
+    "unit": "KG",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 8,
+    "supplierId": 1,
+    "code": "BRG-KKE",
+    "name": "BUNCIS",
+    "unit": "KG",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 9,
+    "supplierId": 1,
+    "code": "BRG-FCR",
+    "name": "CABE MERAH KERITING",
+    "unit": "KG",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 10,
+    "supplierId": 1,
+    "code": "BRG-KMN",
+    "name": "DAUN BAWANG",
+    "unit": "JRIGEN",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 11,
+    "supplierId": 1,
+    "code": "BRG-LBI",
+    "name": "DAUN JERUK",
+    "unit": "KG",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 12,
+    "supplierId": 1,
+    "code": "BRG-MSR",
+    "name": "DAUN SALAM",
+    "unit": "DUS",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 13,
+    "supplierId": 1,
+    "code": "BRG-PAR",
+    "name": "DAUN SELEDRI",
+    "unit": "KG",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 14,
+    "supplierId": 1,
+    "code": "BRG-SBU",
+    "name": "EDAMAME",
+    "unit": "BOTOL",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 15,
+    "supplierId": 1,
+    "code": "BRG-SSM",
+    "name": "JAGUNG",
+    "unit": "KG",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 16,
+    "supplierId": 1,
+    "code": "BRG-SUF",
+    "name": "JAHE",
+    "unit": "LITER",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 17,
+    "supplierId": 1,
+    "code": "BRG-TPU",
+    "name": "JAMUR KANCING",
+    "unit": "PCS",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 18,
+    "supplierId": 1,
+    "code": "BRG-TPN",
+    "name": "JAMUR KUPING KERING",
+    "unit": "KG",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 19,
+    "supplierId": 1,
+    "code": "BRG-TTA",
+    "name": "JAMUR TIRAM",
+    "unit": "KG",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 20,
+    "supplierId": 1,
+    "code": "BRG-WIJ",
+    "name": "JERUK LIMAU",
+    "unit": "KG",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 21,
+    "supplierId": 1,
+    "code": "BRG-RHD",
+    "name": "JERUK NIPIS",
+    "unit": "PCS",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 22,
+    "supplierId": 1,
+    "code": "BRG-RSO",
+    "name": "KACANG HIJAU",
+    "unit": "PCS",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 23,
+    "supplierId": 1,
+    "code": "BRG-AMA",
+    "name": "KACANG PANJANG",
+    "unit": "KG",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 24,
+    "supplierId": 1,
+    "code": "BRG-JBA",
+    "name": "KACANG POLONG",
+    "unit": "PCS",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 25,
+    "supplierId": 1,
+    "code": "BRG-JPO",
+    "name": "KACANG MERAH",
+    "unit": "PCS",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 26,
+    "supplierId": 1,
+    "code": "BRG-MDO",
+    "name": "KACANG TANAH",
+    "unit": "KG",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 27,
+    "supplierId": 1,
+    "code": "BRG-SME",
+    "name": "KAYU MANIS",
+    "unit": "KG",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 28,
+    "supplierId": 1,
+    "code": "BRG-APO",
+    "name": "KELAPA",
+    "unit": "KG",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 29,
+    "supplierId": 1,
+    "code": "BRG-BSA",
+    "name": "KEMANGI",
+    "unit": "KG",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 30,
+    "supplierId": 1,
+    "code": "BRG-ILF",
+    "name": "KOL UNGU",
+    "unit": "KG",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 31,
+    "supplierId": 1,
+    "code": "BRG-IKF",
+    "name": "LABU SIAM",
+    "unit": "KG",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 32,
+    "supplierId": 1,
+    "code": "BRG-TPO",
+    "name": "LENGKUAS",
+    "unit": "PCS",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 33,
+    "supplierId": 1,
+    "code": "BRG-TBL",
+    "name": "LOTUS",
+    "unit": "PCS",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 34,
+    "supplierId": 1,
+    "code": "BRG-BBO",
+    "name": "POKCOY",
+    "unit": "KG",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 35,
+    "supplierId": 1,
+    "code": "BRG-BUN",
+    "name": "PUTREN",
+    "unit": "KG",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 36,
+    "supplierId": 1,
+    "code": "BRG-JKA",
+    "name": "SAWI HIJAU",
+    "unit": "KG",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 37,
+    "supplierId": 1,
+    "code": "BRG-KPA",
+    "name": "SAWI PUTIH",
+    "unit": "KG",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 38,
+    "supplierId": 1,
+    "code": "BRG-KEL",
+    "name": "SELADA",
+    "unit": "KG",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 39,
+    "supplierId": 1,
+    "code": "BRG-LEN",
+    "name": "SERAI",
+    "unit": "KG",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 40,
+    "supplierId": 1,
+    "code": "BRG-SEL",
+    "name": "TAUGE PANJANG",
+    "unit": "KG",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 41,
+    "supplierId": 1,
+    "code": "BRG-KKO",
+    "name": "TAUGE PENDEK",
+    "unit": "KG",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 42,
+    "supplierId": 1,
+    "code": "BRG-ABO",
+    "name": "TIMUN",
+    "unit": "KG",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 43,
+    "supplierId": 1,
+    "code": "BRG-CPK",
+    "name": "TOMAT BUAH",
+    "unit": "KG",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 44,
+    "supplierId": 1,
+    "code": "BRG-GPA",
+    "name": "TOMAT SAYUR",
+    "unit": "KG",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 45,
+    "supplierId": 1,
+    "code": "BRG-KBI",
+    "name": "TOMAT HIJAU",
+    "unit": "KG",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 46,
+    "supplierId": 1,
+    "code": "BRG-MKG",
+    "name": "WORTEL",
+    "unit": "KG",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 47,
+    "supplierId": 1,
+    "code": "BRG-MSK",
+    "name": "KEMBANG KOL",
+    "unit": "DUS",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 48,
+    "supplierId": 1,
+    "code": "BRG-STO",
+    "name": "KENTANG BESAR",
+    "unit": "KG",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 49,
+    "supplierId": 1,
+    "code": "BRG-SSC",
+    "name": "KENTANG SEDANG",
+    "unit": "PCS",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 50,
+    "supplierId": 1,
+    "code": "BRG-STT",
+    "name": "KENTANG KECIL",
+    "unit": "DRIJEN",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 51,
+    "supplierId": 1,
+    "code": "BRG-SUL",
+    "name": "KOL PUTIH",
+    "unit": "PCS",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 52,
+    "supplierId": 1,
+    "code": "BRG-TMA",
+    "name": "BRG-TMA",
+    "unit": "KG",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 53,
+    "supplierId": 1,
+    "code": "BRG-TER",
+    "name": "ABON",
+    "unit": "PACK",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 54,
+    "supplierId": 1,
+    "code": "BRG-MTT",
+    "name": "ASAM JAWA",
+    "unit": "RENCENG",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 55,
+    "supplierId": 1,
+    "code": "BRG-RAY",
+    "name": "BAWANG MERAH GORENG",
+    "unit": "PCS",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 56,
+    "supplierId": 1,
+    "code": "BRG-RPC",
+    "name": "BAWANG PUTIH BUBUK",
+    "unit": "PCS",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 57,
+    "supplierId": 1,
+    "code": "BRG-RST",
+    "name": "CHIKEN POWDER (KNORR)",
+    "unit": "PCS",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 58,
+    "supplierId": 1,
+    "code": "BRG-ACA",
+    "name": "CUKA MASAK DIXI 150ML",
+    "unit": "PCS",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 59,
+    "supplierId": 1,
+    "code": "BRG-BNA",
+    "name": "DAUN PISANG",
+    "unit": "KG",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 60,
+    "supplierId": 1,
+    "code": "BRG-JME",
+    "name": "FIBER CREAM",
+    "unit": "PCS",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 61,
+    "supplierId": 1,
+    "code": "BRG-KIW",
+    "name": "GARAM HALUS",
+    "unit": "PCS",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 62,
+    "supplierId": 1,
+    "code": "BRG-SAL",
+    "name": "GULA JAWA",
+    "unit": "KG",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 63,
+    "supplierId": 1,
+    "code": "BRG-DSP",
+    "name": "GULA PASIR",
+    "unit": "KG",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 64,
+    "supplierId": 1,
+    "code": "BRG-IDF",
+    "name": "KALDU JAMUR 400GR",
+    "unit": "KG",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 65,
+    "supplierId": 1,
+    "code": "BRG-IKG",
+    "name": "KECAP IKAN",
+    "unit": "KG",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 66,
+    "supplierId": 1,
+    "code": "BRG-TKC",
+    "name": "KECAP INGGRIS",
+    "unit": "PCS",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 67,
+    "supplierId": 1,
+    "code": "BRG-BME",
+    "name": "KECAP ASIN",
+    "unit": "KG",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 68,
+    "supplierId": 1,
+    "code": "BRG-CMK",
+    "name": "KECAP KALKUN",
+    "unit": "KG",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 69,
+    "supplierId": 1,
+    "code": "BRG-EDA",
+    "name": "KECAP MANIS",
+    "unit": "KG",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 70,
+    "supplierId": 1,
+    "code": "BRG-JKK",
+    "name": "KEJU WHECHEESE",
+    "unit": "KG",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 71,
+    "supplierId": 1,
+    "code": "BRG-KPO",
+    "name": "KEMIRI",
+    "unit": "KG",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 72,
+    "supplierId": 1,
+    "code": "BRG-LOT",
+    "name": "KETUMBAR BIJI",
+    "unit": "KG",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 73,
+    "supplierId": 1,
+    "code": "BRG-SER",
+    "name": "KULIT PANGSIT ISI 20-25",
+    "unit": "KG",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 74,
+    "supplierId": 1,
+    "code": "BRG-TIM",
+    "name": "KUNYIT",
+    "unit": "KG",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 75,
+    "supplierId": 1,
+    "code": "BRG-KBE",
+    "name": "LADA BIJI",
+    "unit": "KG",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 76,
+    "supplierId": 1,
+    "code": "BRG-AJA",
+    "name": "LADA BUBUK",
+    "unit": "KG",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 77,
+    "supplierId": 1,
+    "code": "BRG-CMD",
+    "name": "MAYONAISE",
+    "unit": "BOTOL",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 78,
+    "supplierId": 1,
+    "code": "BRG-KJG",
+    "name": "MAYONAISE 1 KG",
+    "unit": "PACK",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 79,
+    "supplierId": 1,
+    "code": "BRG-KPI",
+    "name": "MENTEGA",
+    "unit": "PACK",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 80,
+    "supplierId": 1,
+    "code": "BRG-MWI",
+    "name": "MINYAK SAYUR RIZKY",
+    "unit": "BOTOL",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 81,
+    "supplierId": 1,
+    "code": "BRG-SBB",
+    "name": "MINYAK SAYUR KITA",
+    "unit": "KG",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 82,
+    "supplierId": 1,
+    "code": "BRG-SCM",
+    "name": "MINYAK WIJEN",
+    "unit": "KG",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 83,
+    "supplierId": 1,
+    "code": "BRG-SST",
+    "name": "MSG AJINOMOTO",
+    "unit": "PCS",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 84,
+    "supplierId": 1,
+    "code": "BRG-STM",
+    "name": "PARSELEY",
+    "unit": "KG",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 85,
+    "supplierId": 1,
+    "code": "BRG-TAY",
+    "name": "ROYCO",
+    "unit": "KG",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 86,
+    "supplierId": 1,
+    "code": "BRG-TPR",
+    "name": "SAGU MUTIARA",
+    "unit": "SAK",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 87,
+    "supplierId": 1,
+    "code": "BRG-TSB",
+    "name": "SAOS TOMAT",
+    "unit": "KG",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 88,
+    "supplierId": 1,
+    "code": "BRG-TEA",
+    "name": "SAOS BBQ",
+    "unit": "KG",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 89,
+    "supplierId": 1,
+    "code": "BRG-RBU",
+    "name": "SAOS BLOGNESE DELMONTE",
+    "unit": "PCS",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 90,
+    "supplierId": 1,
+    "code": "BRG-RSJ",
+    "name": "SAOS BULGOGI",
+    "unit": "PCS",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 91,
+    "supplierId": 1,
+    "code": "BRG-RTI",
+    "name": "SAOS BULGOGI",
+    "unit": "PACK",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 92,
+    "supplierId": 1,
+    "code": "BRG-BEL",
+    "name": "SAOS CABE",
+    "unit": "PCS",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 93,
+    "supplierId": 1,
+    "code": "BRG-JSA",
+    "name": "SAOS CHILI MC LEWIS",
+    "unit": "KG",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 94,
+    "supplierId": 1,
+    "code": "BRG-MDH",
+    "name": "SAOS LADA HITAM",
+    "unit": "KG",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 95,
+    "supplierId": 1,
+    "code": "BRG-PCA",
+    "name": "SAOS LADA HITAM",
+    "unit": "PCS",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 96,
+    "supplierId": 1,
+    "code": "BRG-SKU",
+    "name": "SAOS SACHET CABE",
+    "unit": "KG",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 97,
+    "supplierId": 1,
+    "code": "BRG-DAK",
+    "name": "SAOS SACHET TOMAT",
+    "unit": "KG",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 98,
+    "supplierId": 1,
+    "code": "BRG-ILE",
+    "name": "SAOS SAMBAL",
+    "unit": "KG",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 99,
+    "supplierId": 1,
+    "code": "BRG-T70",
+    "name": "SAOS SPICY MAYONAISE",
+    "unit": "PAPAN",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 100,
+    "supplierId": 1,
+    "code": "BRG-TKL",
+    "name": "SAOS TERIYAKI",
+    "unit": "PCS",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 101,
+    "supplierId": 1,
+    "code": "BRG-TBA",
+    "name": "SAOS TIRAM",
+    "unit": "PCS",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 102,
+    "supplierId": 1,
+    "code": "BRG-BMK",
+    "name": "SAOS TOMAT",
+    "unit": "KG",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 103,
+    "supplierId": 1,
+    "code": "BRG-DBA",
+    "name": "SAOS TOMAT MC LEWIS",
+    "unit": "KG",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 104,
+    "supplierId": 1,
+    "code": "BRG-JTI",
+    "name": "SAUS MUSTARD",
+    "unit": "KG",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 105,
+    "supplierId": 1,
+    "code": "BRG-KME",
+    "name": "SODA KUE 81 GR",
+    "unit": "KG",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 106,
+    "supplierId": 1,
+    "code": "BRG-POK",
+    "name": "SOUN",
+    "unit": "KG",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 107,
+    "supplierId": 1,
+    "code": "BRG-TPA",
+    "name": "SUSU KENTAL MANIS 535GR",
+    "unit": "KG",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 108,
+    "supplierId": 1,
+    "code": "BRG-TBU",
+    "name": "SUSU UHT FULL CREAM 1 LITER",
+    "unit": "KG",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 109,
+    "supplierId": 1,
+    "code": "BRG-KSE",
+    "name": "SUSU ULTRA SEKOLAH 125ML",
+    "unit": "KG",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 110,
+    "supplierId": 1,
+    "code": "BRG-DPI",
+    "name": "SUSU ULTRAMILK 125ML",
+    "unit": "PACK",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 111,
+    "supplierId": 1,
+    "code": "BRG-KIK",
+    "name": "SUSU ULTRAMILK 200ML",
+    "unit": "BOTOL",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 112,
+    "supplierId": 1,
+    "code": "BRG-KKA",
+    "name": "TELUR AYAM",
+    "unit": "KG",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 113,
+    "supplierId": 1,
+    "code": "BRG-KUY",
+    "name": "TELUR PUYUH MENTAH (80-85 PCS)",
+    "unit": "KG",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 114,
+    "supplierId": 1,
+    "code": "BRG-MEN",
+    "name": "TELUR PUYUH MENTAH",
+    "unit": "KG",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 115,
+    "supplierId": 1,
+    "code": "BRG-MAJ",
+    "name": "TEPUNG BERAS",
+    "unit": "KG",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 116,
+    "supplierId": 1,
+    "code": "BRG-SBD",
+    "name": "TEPUNG BERAS",
+    "unit": "DRIJEN",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 117,
+    "supplierId": 1,
+    "code": "BRG-SSA",
+    "name": "TEPUNG MAIZENA",
+    "unit": "KG",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 118,
+    "supplierId": 1,
+    "code": "BRG-SMS",
+    "name": "TEPUNG PANIR",
+    "unit": "KG",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 119,
+    "supplierId": 1,
+    "code": "BRG-SKM",
+    "name": "TEPUNG PANIR",
+    "unit": "PACK",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 120,
+    "supplierId": 1,
+    "code": "BRG-TPM",
+    "name": "TEPUNG SAJIKU",
+    "unit": "KG",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 121,
+    "supplierId": 1,
+    "code": "BRG-TSG",
+    "name": "TEPUNG SEGITIGA BIRU",
+    "unit": "PACK",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 122,
+    "supplierId": 1,
+    "code": "BRG-VKK",
+    "name": "TEPUNG SERBAGUNA 900GR",
+    "unit": "BOTOL",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 123,
+    "supplierId": 1,
+    "code": "BRG-DGU",
+    "name": "TEPUNG TAPIOKA",
+    "unit": "PCS",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 124,
+    "supplierId": 1,
+    "code": "BRG-RCO",
+    "name": "TEPUNG TERIGU LM",
+    "unit": "PCS",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 125,
+    "supplierId": 1,
+    "code": "BRG-RSM",
+    "name": "TEPUNG TERIGU",
+    "unit": "PCS",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 126,
+    "supplierId": 1,
+    "code": "BRG-AFU",
+    "name": "TERASI",
+    "unit": "PCS",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 127,
+    "supplierId": 1,
+    "code": "BRG-JMA",
+    "name": "TERASI",
+    "unit": "PCS",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 128,
+    "supplierId": 1,
+    "code": "BRG-KUR",
+    "name": "VANILI KUPU KUPU",
+    "unit": "DUS",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 129,
+    "supplierId": 1,
+    "code": "BRG-PEA",
+    "name": "WIJEN",
+    "unit": "PCS",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 130,
+    "supplierId": 1,
+    "code": "BRG-STR",
+    "name": "BRG-STR",
+    "unit": "KG",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 131,
+    "supplierId": 1,
+    "code": "BRG-DAF",
+    "name": "JAHE BUBUK",
+    "unit": "KG",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 132,
+    "supplierId": 1,
+    "code": "BRG-DAH",
+    "name": "KUNYIT BUBUK",
+    "unit": "KG",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 133,
+    "supplierId": 1,
+    "code": "BRG-ITT",
+    "name": "MARINASI TEMPE, TAHU, AYAM GORENG",
+    "unit": "KG",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 134,
+    "supplierId": 1,
+    "code": "BRG-BPR",
+    "name": "BRG-BPR",
+    "unit": "PCS",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 135,
+    "supplierId": 1,
+    "code": "BRG-T80",
+    "name": "DONAT GULA",
+    "unit": "PAPAN",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 136,
+    "supplierId": 1,
+    "code": "BRG-TKU",
+    "name": "ROTI ABON",
+    "unit": "PCS",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 137,
+    "supplierId": 1,
+    "code": "BRG-BPK",
+    "name": "ROTI AYAM",
+    "unit": "KG",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 138,
+    "supplierId": 1,
+    "code": "BRG-DSA",
+    "name": "ROTI BUN",
+    "unit": "KG",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 139,
+    "supplierId": 1,
+    "code": "BRG-JAG",
+    "name": "ROTI COKLAT",
+    "unit": "KG",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 140,
+    "supplierId": 1,
+    "code": "BRG-JNI",
+    "name": "ROTI HOT DOG",
+    "unit": "KG",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 141,
+    "supplierId": 1,
+    "code": "BRG-KUN",
+    "name": "ROTI KACANG HIJAU",
+    "unit": "KG",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 142,
+    "supplierId": 1,
+    "code": "BRG-SHI",
+    "name": "ROTI KEJU",
+    "unit": "KG",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 143,
+    "supplierId": 1,
+    "code": "BRG-TPE",
+    "name": "ROTI PISANG COKLAT",
+    "unit": "KG",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 144,
+    "supplierId": 1,
+    "code": "BRG-THI",
+    "name": "ROTI SISIR (JORDAN)",
+    "unit": "KG",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 145,
+    "supplierId": 1,
+    "code": "BRG-KPU",
+    "name": "ROTI SISIR MENTEGA",
+    "unit": "KG",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 146,
+    "supplierId": 1,
+    "code": "BRG-BMG",
+    "name": "ROTI SOSIS",
+    "unit": "KG",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 147,
+    "supplierId": 1,
+    "code": "BRG-GHA",
+    "name": "ROTI SRIKAYA",
+    "unit": "KG",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 148,
+    "supplierId": 1,
+    "code": "BRG-KIN",
+    "name": "ROTI STRAWBERRY",
+    "unit": "BOTOL",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 149,
+    "supplierId": 1,
+    "code": "BRG-KWH",
+    "name": "ROTI TAWAR (ISI 2/PACK)",
+    "unit": "KG",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 150,
+    "supplierId": 1,
+    "code": "BRG-LBU",
+    "name": "ROTI TAWAR PANDAN (ISI 2/PACK)",
+    "unit": "KG",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 151,
+    "supplierId": 1,
+    "code": "BRG-ROY",
+    "name": "ROTI TAWAR SUSU (ISI 2/PACK)",
+    "unit": "KG",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 152,
+    "supplierId": 1,
+    "code": "BRG-SBI",
+    "name": "BRG-SBI",
+    "unit": "LITER",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 153,
+    "supplierId": 1,
+    "code": "BRG-SLH",
+    "name": "APEL CANDY",
+    "unit": "BOTOL",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 154,
+    "supplierId": 1,
+    "code": "BRG-STE",
+    "name": "APEL FUJI",
+    "unit": "BOTOL",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 155,
+    "supplierId": 1,
+    "code": "BRG-SKG",
+    "name": "BELIMBING",
+    "unit": "PACK",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 156,
+    "supplierId": 1,
+    "code": "BRG-SUS",
+    "name": "ANGGUR MERAH AUSSY",
+    "unit": "PCS",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 157,
+    "supplierId": 1,
+    "code": "BRG-TBE",
+    "name": "ANGGUR MERAH RRC",
+    "unit": "KG",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 158,
+    "supplierId": 1,
+    "code": "BRG-TSJ",
+    "name": "ANGGUR HIJAU",
+    "unit": "KG",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 159,
+    "supplierId": 1,
+    "code": "BRG-TTL",
+    "name": "BUAH NAGA",
+    "unit": "KG",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 160,
+    "supplierId": 1,
+    "code": "BRG-JBU",
+    "name": "JERUK MANDARIN",
+    "unit": "RENCENG",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 161,
+    "supplierId": 1,
+    "code": "BRG-RKH",
+    "name": "JERUK BABY",
+    "unit": "PCS",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 162,
+    "supplierId": 1,
+    "code": "BRG-RSR",
+    "name": "JERUK MALANG",
+    "unit": "PCS",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 163,
+    "supplierId": 1,
+    "code": "BRG-RTP",
+    "name": "JERUK MEDAN",
+    "unit": "PCS",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 164,
+    "supplierId": 1,
+    "code": "BRG-AMR",
+    "name": "JERUK SANTANG",
+    "unit": "KG",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 165,
+    "supplierId": 1,
+    "code": "BRG-KHJ",
+    "name": "JERUK PONKAM",
+    "unit": "KG",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 166,
+    "supplierId": 1,
+    "code": "BRG-NAN",
+    "name": "KELENGKENG HIJAU",
+    "unit": "KG",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 167,
+    "supplierId": 1,
+    "code": "BRG-SBF",
+    "name": "KELENGKENG BIRU",
+    "unit": "KG",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 168,
+    "supplierId": 1,
+    "code": "BRG-BAY",
+    "name": "KIWI",
+    "unit": "KG",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 169,
+    "supplierId": 1,
+    "code": "BRG-INI",
+    "name": "KURMA",
+    "unit": "KG",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 170,
+    "supplierId": 1,
+    "code": "BRG-IKN",
+    "name": "MELON DAGING HIJAU",
+    "unit": "KG",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 171,
+    "supplierId": 1,
+    "code": "BRG-TPT",
+    "name": "MELON DAGINGG ORANGE",
+    "unit": "PCS",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 172,
+    "supplierId": 1,
+    "code": "BRG-BRO",
+    "name": "NANAS",
+    "unit": "KG",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 173,
+    "supplierId": 1,
+    "code": "BRG-DSE",
+    "name": "PEPAYA",
+    "unit": "KG",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 174,
+    "supplierId": 1,
+    "code": "BRG-JAH",
+    "name": "PEAR",
+    "unit": "KG",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 175,
+    "supplierId": 1,
+    "code": "BRG-KHI",
+    "name": "PISANG CAVENDISH",
+    "unit": "KG",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 176,
+    "supplierId": 1,
+    "code": "BRG-KMA",
+    "name": "PISANG AMBON",
+    "unit": "KG",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 177,
+    "supplierId": 1,
+    "code": "BRG-LSI",
+    "name": "SALAK",
+    "unit": "KG",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 178,
+    "supplierId": 1,
+    "code": "BRG-SPU",
+    "name": "STRAWBERRY",
+    "unit": "KG",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 179,
+    "supplierId": 1,
+    "code": "BRG-WOR",
+    "name": "SEMANGKA KUNING",
+    "unit": "KG",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 180,
+    "supplierId": 1,
+    "code": "BRG-BPB",
+    "name": "SEMANGKA MERAH",
+    "unit": "KG",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 181,
+    "supplierId": 1,
+    "code": "BRG-GJA",
+    "name": "BRG-GJA",
+    "unit": "KG",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 182,
+    "supplierId": 1,
+    "code": "BRG-KAS",
+    "name": "SLICE BEEF FAT (ISI 100 - 120)",
+    "unit": "BOTOL",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 183,
+    "supplierId": 1,
+    "code": "BRG-KEI",
+    "name": "SLICE BEEF NON FAT (ISI 100 - 120)",
+    "unit": "KG",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 184,
+    "supplierId": 1,
+    "code": "BRG-MAY",
+    "name": "DAGING SAPI",
+    "unit": "BOTOL",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 185,
+    "supplierId": 1,
+    "code": "BRG-SMU",
+    "name": "DAGING AYAM FILLET TANPA KULIT",
+    "unit": "KG",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 186,
+    "supplierId": 1,
+    "code": "BRG-SCA",
+    "name": "DAGING AYAM FILLET KULIT",
+    "unit": "KG",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 187,
+    "supplierId": 1,
+    "code": "BRG-SLM",
+    "name": "AYAM POTONG",
+    "unit": "KG",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 188,
+    "supplierId": 1,
+    "code": "BRG-STI",
+    "name": "DAGING AYAM GILING KASAR",
+    "unit": "BOTOL",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 189,
+    "supplierId": 1,
+    "code": "BRG-SOU",
+    "name": "DAGING AYAM GILING HALUS",
+    "unit": "KG",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 190,
+    "supplierId": 1,
+    "code": "BRG-SUM",
+    "name": "BALUNGAN SAPI",
+    "unit": "PCS",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 191,
+    "supplierId": 1,
+    "code": "BRG-TBR",
+    "name": "BALUNGAN AYAM",
+    "unit": "DUS",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 192,
+    "supplierId": 1,
+    "code": "BRG-TTE",
+    "name": "AYAM SAYAP",
+    "unit": "SAK",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 193,
+    "supplierId": 1,
+    "code": "BRG-KBU",
+    "name": "BRG-KBU",
+    "unit": "RENCENG",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 194,
+    "supplierId": 1,
+    "code": "BRG-RAB",
+    "name": "IKAN DORI FILLET (DENGAN ES 50 %)",
+    "unit": "PCS",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 195,
+    "supplierId": 1,
+    "code": "BRG-RKE",
+    "name": "IKAN TUNA (TANPA ES)",
+    "unit": "PCS",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 196,
+    "supplierId": 1,
+    "code": "BRG-RTS",
+    "name": "IKAN LELE",
+    "unit": "PCS",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 197,
+    "supplierId": 1,
+    "code": "BRG-AHI",
+    "name": "IKAN LELE FILLET",
+    "unit": "KG",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 198,
+    "supplierId": 1,
+    "code": "BRG-JML",
+    "name": "IKAN NILA",
+    "unit": "PCS",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 199,
+    "supplierId": 1,
+    "code": "BRG-KBR",
+    "name": "IKAN NILA FILLET",
+    "unit": "KG",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 200,
+    "supplierId": 1,
+    "code": "BRG-PEP",
+    "name": "BANDENG PRESTO",
+    "unit": "KG",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 201,
+    "supplierId": 1,
+    "code": "BRG-PAM",
+    "name": "IKAN KAKAP FILLET (SUDAH DISLICE)",
+    "unit": "PCS",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 202,
+    "supplierId": 1,
+    "code": "BRG-SBN",
+    "name": "IKAN KAKAP FILLET UTUH (NON GLAZING)",
+    "unit": "KG",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 203,
+    "supplierId": 1,
+    "code": "BRG-DAG",
+    "name": "IKAN KAKAP FILLET UTUH (GLAZING)",
+    "unit": "KG",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 204,
+    "supplierId": 1,
+    "code": "BRG-ASA",
+    "name": "BRG-ASA",
+    "unit": "KG",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 205,
+    "supplierId": 1,
+    "code": "BRG-INF",
+    "name": "TEMPE 800GR",
+    "unit": "KG",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 206,
+    "supplierId": 1,
+    "code": "BRG-TGM",
+    "name": "TEMPE 700GR",
+    "unit": "KG",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 207,
+    "supplierId": 1,
+    "code": "BRG-TCE",
+    "name": "TAHU PONG",
+    "unit": "PCS",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 208,
+    "supplierId": 1,
+    "code": "BRG-THU208",
+    "name": "TAHU PUTIH",
+    "unit": "KG",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 209,
+    "supplierId": 1,
+    "code": "BRG-THU209",
+    "name": "TAHU GORENG 1/2 MATENG POTONG DADU",
+    "unit": "KG",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 210,
+    "supplierId": 1,
+    "code": "BRG-THU210",
+    "name": "TAHU KULIT COKLAT KECIL KECIL",
+    "unit": "KG",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 211,
+    "supplierId": 1,
+    "code": "BRG-THU211",
+    "name": "TAHU KUNING",
+    "unit": "KG",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 212,
+    "supplierId": 1,
+    "code": "BRG-THU212",
+    "name": "TAHU KULIT",
+    "unit": "KG",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 213,
+    "supplierId": 1,
+    "code": "BRG-THU213",
+    "name": "TAHU BULAT",
+    "unit": "KG",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 214,
+    "supplierId": 1,
+    "code": "BRG-THU214",
+    "name": "TAHU CERIA",
+    "unit": "KG",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  },
+  {
+    "id": 215,
+    "supplierId": 1,
+    "code": "BRG-THU215",
+    "name": "TAHU BAKSO",
+    "unit": "KG",
+    "stock": 100,
+    "kategori": "Bahan Baku",
+    "notes": "Katalog Bahan Baku PT AR Multi Karya"
+  }
+];
 
     const SEED_PRICE_LIST = [
-      { id: 1, barangId: 1, hargaBeli: 60000, hargaJual: 65000, effectiveDate: '2026-07-01', effectiveDateEnd: '' },
-      { id: 2, barangId: 2, hargaBeli: 190000, hargaJual: 210000, effectiveDate: '2026-07-01', effectiveDateEnd: '' },
-      { id: 3, barangId: 3, hargaBeli: 15000, hargaJual: 18000, effectiveDate: '2026-07-01', effectiveDateEnd: '' },
-      { id: 4, barangId: 4, hargaBeli: 43000, hargaJual: 47000, effectiveDate: '2026-07-01', effectiveDateEnd: '' }
-    ];
+  {
+    "id": 1,
+    "barangId": 1,
+    "hargaBeli": 15000,
+    "hargaJual": 15500,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 2,
+    "barangId": 2,
+    "hargaBeli": 30000,
+    "hargaJual": 33000,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 3,
+    "barangId": 3,
+    "hargaBeli": 31000,
+    "hargaJual": 34000,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 4,
+    "barangId": 4,
+    "hargaBeli": 37000,
+    "hargaJual": 40000,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 5,
+    "barangId": 5,
+    "hargaBeli": 38000,
+    "hargaJual": 41000,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 6,
+    "barangId": 6,
+    "hargaBeli": 43000,
+    "hargaJual": 46000,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 7,
+    "barangId": 7,
+    "hargaBeli": 30000,
+    "hargaJual": 33000,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 8,
+    "barangId": 8,
+    "hargaBeli": 20000,
+    "hargaJual": 23000,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 9,
+    "barangId": 9,
+    "hargaBeli": 70000,
+    "hargaJual": 73000,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 10,
+    "barangId": 10,
+    "hargaBeli": 18000,
+    "hargaJual": 21000,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 11,
+    "barangId": 11,
+    "hargaBeli": 52000,
+    "hargaJual": 55000,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 12,
+    "barangId": 12,
+    "hargaBeli": 14000,
+    "hargaJual": 17000,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 13,
+    "barangId": 13,
+    "hargaBeli": 18000,
+    "hargaJual": 21000,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 14,
+    "barangId": 14,
+    "hargaBeli": 31000,
+    "hargaJual": 36000,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 15,
+    "barangId": 15,
+    "hargaBeli": 8000,
+    "hargaJual": 11000,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 16,
+    "barangId": 16,
+    "hargaBeli": 32000,
+    "hargaJual": 35000,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 17,
+    "barangId": 17,
+    "hargaBeli": 0,
+    "hargaJual": 0,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 18,
+    "barangId": 18,
+    "hargaBeli": 87000,
+    "hargaJual": 90000,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 19,
+    "barangId": 19,
+    "hargaBeli": 19000,
+    "hargaJual": 0,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 20,
+    "barangId": 20,
+    "hargaBeli": 27000,
+    "hargaJual": 30000,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 21,
+    "barangId": 21,
+    "hargaBeli": 30000,
+    "hargaJual": 33000,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 22,
+    "barangId": 22,
+    "hargaBeli": 32000,
+    "hargaJual": 39000,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 23,
+    "barangId": 23,
+    "hargaBeli": 13000,
+    "hargaJual": 16000,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 24,
+    "barangId": 24,
+    "hargaBeli": 30000,
+    "hargaJual": 35000,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 25,
+    "barangId": 25,
+    "hargaBeli": 37000,
+    "hargaJual": 39000,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 26,
+    "barangId": 26,
+    "hargaBeli": 45000,
+    "hargaJual": 45000,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 27,
+    "barangId": 27,
+    "hargaBeli": 0,
+    "hargaJual": 0,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 28,
+    "barangId": 28,
+    "hargaBeli": 0,
+    "hargaJual": 0,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 29,
+    "barangId": 29,
+    "hargaBeli": 30000,
+    "hargaJual": 33000,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 30,
+    "barangId": 30,
+    "hargaBeli": 20000,
+    "hargaJual": 23000,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 31,
+    "barangId": 31,
+    "hargaBeli": 10000,
+    "hargaJual": 13000,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 32,
+    "barangId": 32,
+    "hargaBeli": 9000,
+    "hargaJual": 12000,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 33,
+    "barangId": 33,
+    "hargaBeli": 0,
+    "hargaJual": 0,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 34,
+    "barangId": 34,
+    "hargaBeli": 10000,
+    "hargaJual": 13000,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 35,
+    "barangId": 35,
+    "hargaBeli": 16000,
+    "hargaJual": 19000,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 36,
+    "barangId": 36,
+    "hargaBeli": 10000,
+    "hargaJual": 13000,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 37,
+    "barangId": 37,
+    "hargaBeli": 10000,
+    "hargaJual": 13000,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 38,
+    "barangId": 38,
+    "hargaBeli": 15000,
+    "hargaJual": 18000,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 39,
+    "barangId": 39,
+    "hargaBeli": 14000,
+    "hargaJual": 17000,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 40,
+    "barangId": 40,
+    "hargaBeli": 13000,
+    "hargaJual": 16000,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 41,
+    "barangId": 41,
+    "hargaBeli": 25000,
+    "hargaJual": 28000,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 42,
+    "barangId": 42,
+    "hargaBeli": 12000,
+    "hargaJual": 15000,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 43,
+    "barangId": 43,
+    "hargaBeli": 10000,
+    "hargaJual": 13000,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 44,
+    "barangId": 44,
+    "hargaBeli": 9000,
+    "hargaJual": 12000,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 45,
+    "barangId": 45,
+    "hargaBeli": 8000,
+    "hargaJual": 11000,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 46,
+    "barangId": 46,
+    "hargaBeli": 15000,
+    "hargaJual": 18000,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 47,
+    "barangId": 47,
+    "hargaBeli": 13000,
+    "hargaJual": 16000,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 48,
+    "barangId": 48,
+    "hargaBeli": 15000,
+    "hargaJual": 18000,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 49,
+    "barangId": 49,
+    "hargaBeli": 14000,
+    "hargaJual": 17000,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 50,
+    "barangId": 50,
+    "hargaBeli": 13000,
+    "hargaJual": 16000,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 51,
+    "barangId": 51,
+    "hargaBeli": 10000,
+    "hargaJual": 13000,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 52,
+    "barangId": 52,
+    "hargaBeli": 0,
+    "hargaJual": 0,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 53,
+    "barangId": 53,
+    "hargaBeli": 118000,
+    "hargaJual": 120000,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 54,
+    "barangId": 54,
+    "hargaBeli": 28000,
+    "hargaJual": 30000,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 55,
+    "barangId": 55,
+    "hargaBeli": 0,
+    "hargaJual": 126000,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 56,
+    "barangId": 56,
+    "hargaBeli": 70000,
+    "hargaJual": 76000,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 57,
+    "barangId": 57,
+    "hargaBeli": 0,
+    "hargaJual": 109000,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 58,
+    "barangId": 58,
+    "hargaBeli": 5000,
+    "hargaJual": 7000,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 59,
+    "barangId": 59,
+    "hargaBeli": 7000,
+    "hargaJual": 0,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 60,
+    "barangId": 60,
+    "hargaBeli": 113000,
+    "hargaJual": 120000,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 61,
+    "barangId": 61,
+    "hargaBeli": 12000,
+    "hargaJual": 14000,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 62,
+    "barangId": 62,
+    "hargaBeli": 23000,
+    "hargaJual": 25000,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 63,
+    "barangId": 63,
+    "hargaBeli": 18500,
+    "hargaJual": 20000,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 64,
+    "barangId": 64,
+    "hargaBeli": 57000,
+    "hargaJual": 60000,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 65,
+    "barangId": 65,
+    "hargaBeli": 41000,
+    "hargaJual": 45000,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 66,
+    "barangId": 66,
+    "hargaBeli": 50000,
+    "hargaJual": 56000,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 67,
+    "barangId": 67,
+    "hargaBeli": 45000,
+    "hargaJual": 51000,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 68,
+    "barangId": 68,
+    "hargaBeli": 30000,
+    "hargaJual": 39000,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 69,
+    "barangId": 69,
+    "hargaBeli": 0,
+    "hargaJual": 191000,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 70,
+    "barangId": 70,
+    "hargaBeli": 55000,
+    "hargaJual": 56000,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 71,
+    "barangId": 71,
+    "hargaBeli": 48000,
+    "hargaJual": 51000,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 72,
+    "barangId": 72,
+    "hargaBeli": 29000,
+    "hargaJual": 36000,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 73,
+    "barangId": 73,
+    "hargaBeli": 12000,
+    "hargaJual": 5000,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 74,
+    "barangId": 74,
+    "hargaBeli": 0,
+    "hargaJual": 14000,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 75,
+    "barangId": 75,
+    "hargaBeli": 0,
+    "hargaJual": 161000,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 76,
+    "barangId": 76,
+    "hargaBeli": 148000,
+    "hargaJual": 171000,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 77,
+    "barangId": 77,
+    "hargaBeli": 0,
+    "hargaJual": 0,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 78,
+    "barangId": 78,
+    "hargaBeli": 24000,
+    "hargaJual": 27000,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 79,
+    "barangId": 79,
+    "hargaBeli": 19500,
+    "hargaJual": 23000,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 80,
+    "barangId": 80,
+    "hargaBeli": 215000,
+    "hargaJual": 220000,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 81,
+    "barangId": 81,
+    "hargaBeli": 220000,
+    "hargaJual": 246000,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 82,
+    "barangId": 82,
+    "hargaBeli": 44000,
+    "hargaJual": 58500,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 83,
+    "barangId": 83,
+    "hargaBeli": 0,
+    "hargaJual": 53000,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 84,
+    "barangId": 84,
+    "hargaBeli": 0,
+    "hargaJual": 271000,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 85,
+    "barangId": 85,
+    "hargaBeli": 45000,
+    "hargaJual": 51000,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 86,
+    "barangId": 86,
+    "hargaBeli": 28500,
+    "hargaJual": 31500,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 87,
+    "barangId": 87,
+    "hargaBeli": 13000,
+    "hargaJual": 16000,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 88,
+    "barangId": 88,
+    "hargaBeli": 38000,
+    "hargaJual": 51000,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 89,
+    "barangId": 89,
+    "hargaBeli": 0,
+    "hargaJual": 0,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 90,
+    "barangId": 90,
+    "hargaBeli": 0,
+    "hargaJual": 0,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 91,
+    "barangId": 91,
+    "hargaBeli": 0,
+    "hargaJual": 0,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 92,
+    "barangId": 92,
+    "hargaBeli": 13000,
+    "hargaJual": 0,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 93,
+    "barangId": 93,
+    "hargaBeli": 0,
+    "hargaJual": 0,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 94,
+    "barangId": 94,
+    "hargaBeli": 0,
+    "hargaJual": 0,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 95,
+    "barangId": 95,
+    "hargaBeli": 54000,
+    "hargaJual": 0,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 96,
+    "barangId": 96,
+    "hargaBeli": 292,
+    "hargaJual": 450,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 97,
+    "barangId": 97,
+    "hargaBeli": 250,
+    "hargaJual": 450,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 98,
+    "barangId": 98,
+    "hargaBeli": 0,
+    "hargaJual": 20000,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 99,
+    "barangId": 99,
+    "hargaBeli": 0,
+    "hargaJual": 0,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 100,
+    "barangId": 100,
+    "hargaBeli": 51000,
+    "hargaJual": 57000,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 101,
+    "barangId": 101,
+    "hargaBeli": 55500,
+    "hargaJual": 57000,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 102,
+    "barangId": 102,
+    "hargaBeli": 0,
+    "hargaJual": 0,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 103,
+    "barangId": 103,
+    "hargaBeli": 0,
+    "hargaJual": 0,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 104,
+    "barangId": 104,
+    "hargaBeli": 0,
+    "hargaJual": 0,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 105,
+    "barangId": 105,
+    "hargaBeli": 7500,
+    "hargaJual": 10000,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 106,
+    "barangId": 106,
+    "hargaBeli": 0,
+    "hargaJual": 0,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 107,
+    "barangId": 107,
+    "hargaBeli": 22000,
+    "hargaJual": 25000,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 108,
+    "barangId": 108,
+    "hargaBeli": 20000,
+    "hargaJual": 27000,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 109,
+    "barangId": 109,
+    "hargaBeli": 3125,
+    "hargaJual": 3600,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 110,
+    "barangId": 110,
+    "hargaBeli": 3250,
+    "hargaJual": 3725,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 111,
+    "barangId": 111,
+    "hargaBeli": 5000,
+    "hargaJual": 5700,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 112,
+    "barangId": 112,
+    "hargaBeli": 24000,
+    "hargaJual": 25000,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 113,
+    "barangId": 113,
+    "hargaBeli": 0,
+    "hargaJual": 38000,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 114,
+    "barangId": 114,
+    "hargaBeli": 0,
+    "hargaJual": 500,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 115,
+    "barangId": 115,
+    "hargaBeli": 20000,
+    "hargaJual": 23000,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 116,
+    "barangId": 116,
+    "hargaBeli": 0,
+    "hargaJual": 0,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 117,
+    "barangId": 117,
+    "hargaBeli": 18000,
+    "hargaJual": 20000,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 118,
+    "barangId": 118,
+    "hargaBeli": 200000,
+    "hargaJual": 215000,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 119,
+    "barangId": 119,
+    "hargaBeli": 22000,
+    "hargaJual": 24000,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 120,
+    "barangId": 120,
+    "hargaBeli": 0,
+    "hargaJual": 0,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 121,
+    "barangId": 121,
+    "hargaBeli": 13000,
+    "hargaJual": 0,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 122,
+    "barangId": 122,
+    "hargaBeli": 20000,
+    "hargaJual": 23000,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 123,
+    "barangId": 123,
+    "hargaBeli": 20000,
+    "hargaJual": 23000,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 124,
+    "barangId": 124,
+    "hargaBeli": 12000,
+    "hargaJual": 14000,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 125,
+    "barangId": 125,
+    "hargaBeli": 200000,
+    "hargaJual": 215000,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 126,
+    "barangId": 126,
+    "hargaBeli": 10000,
+    "hargaJual": 0,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 127,
+    "barangId": 127,
+    "hargaBeli": 0,
+    "hargaJual": 0,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 128,
+    "barangId": 128,
+    "hargaBeli": 10000,
+    "hargaJual": 12000,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 129,
+    "barangId": 129,
+    "hargaBeli": 41000,
+    "hargaJual": 66000,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 130,
+    "barangId": 130,
+    "hargaBeli": 0,
+    "hargaJual": 0,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 131,
+    "barangId": 131,
+    "hargaBeli": 5000,
+    "hargaJual": 7000,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 132,
+    "barangId": 132,
+    "hargaBeli": 6500,
+    "hargaJual": 13000,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 133,
+    "barangId": 133,
+    "hargaBeli": 11500,
+    "hargaJual": 13000,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 134,
+    "barangId": 134,
+    "hargaBeli": 0,
+    "hargaJual": 0,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 135,
+    "barangId": 135,
+    "hargaBeli": 0,
+    "hargaJual": 0,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 136,
+    "barangId": 136,
+    "hargaBeli": 0,
+    "hargaJual": 0,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 137,
+    "barangId": 137,
+    "hargaBeli": 0,
+    "hargaJual": 0,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 138,
+    "barangId": 138,
+    "hargaBeli": 0,
+    "hargaJual": 2000,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 139,
+    "barangId": 139,
+    "hargaBeli": 0,
+    "hargaJual": 0,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 140,
+    "barangId": 140,
+    "hargaBeli": 0,
+    "hargaJual": 0,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 141,
+    "barangId": 141,
+    "hargaBeli": 0,
+    "hargaJual": 0,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 142,
+    "barangId": 142,
+    "hargaBeli": 0,
+    "hargaJual": 0,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 143,
+    "barangId": 143,
+    "hargaBeli": 0,
+    "hargaJual": 0,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 144,
+    "barangId": 144,
+    "hargaBeli": 0,
+    "hargaJual": 0,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 145,
+    "barangId": 145,
+    "hargaBeli": 0,
+    "hargaJual": 0,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 146,
+    "barangId": 146,
+    "hargaBeli": 0,
+    "hargaJual": 0,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 147,
+    "barangId": 147,
+    "hargaBeli": 0,
+    "hargaJual": 0,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 148,
+    "barangId": 148,
+    "hargaBeli": 0,
+    "hargaJual": 0,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 149,
+    "barangId": 149,
+    "hargaBeli": 0,
+    "hargaJual": 2800,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 150,
+    "barangId": 150,
+    "hargaBeli": 0,
+    "hargaJual": 0,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 151,
+    "barangId": 151,
+    "hargaBeli": 0,
+    "hargaJual": 0,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 152,
+    "barangId": 152,
+    "hargaBeli": 0,
+    "hargaJual": 0,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 153,
+    "barangId": 153,
+    "hargaBeli": 3000,
+    "hargaJual": 3600,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 154,
+    "barangId": 154,
+    "hargaBeli": 3200,
+    "hargaJual": 4000,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 155,
+    "barangId": 155,
+    "hargaBeli": 0,
+    "hargaJual": 0,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 156,
+    "barangId": 156,
+    "hargaBeli": 46000,
+    "hargaJual": 0,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 157,
+    "barangId": 157,
+    "hargaBeli": 49000,
+    "hargaJual": 64000,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 158,
+    "barangId": 158,
+    "hargaBeli": 51000,
+    "hargaJual": 66000,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 159,
+    "barangId": 159,
+    "hargaBeli": 18000,
+    "hargaJual": 24000,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 160,
+    "barangId": 160,
+    "hargaBeli": 3200,
+    "hargaJual": 4300,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 161,
+    "barangId": 161,
+    "hargaBeli": 2400,
+    "hargaJual": 2900,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 162,
+    "barangId": 162,
+    "hargaBeli": 1900,
+    "hargaJual": 2600,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 163,
+    "barangId": 163,
+    "hargaBeli": 2100,
+    "hargaJual": 2800,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 164,
+    "barangId": 164,
+    "hargaBeli": 35000,
+    "hargaJual": 45000,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 165,
+    "barangId": 165,
+    "hargaBeli": 3300,
+    "hargaJual": 4000,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 166,
+    "barangId": 166,
+    "hargaBeli": 30000,
+    "hargaJual": 46000,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 167,
+    "barangId": 167,
+    "hargaBeli": 32000,
+    "hargaJual": 48000,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 168,
+    "barangId": 168,
+    "hargaBeli": 4300,
+    "hargaJual": 6500,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 169,
+    "barangId": 169,
+    "hargaBeli": 350000,
+    "hargaJual": 470000,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 170,
+    "barangId": 170,
+    "hargaBeli": 10500,
+    "hargaJual": 16000,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 171,
+    "barangId": 171,
+    "hargaBeli": 17000,
+    "hargaJual": 22500,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 172,
+    "barangId": 172,
+    "hargaBeli": 0,
+    "hargaJual": 16000,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 173,
+    "barangId": 173,
+    "hargaBeli": 10500,
+    "hargaJual": 14000,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 174,
+    "barangId": 174,
+    "hargaBeli": 4500,
+    "hargaJual": 5000,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 175,
+    "barangId": 175,
+    "hargaBeli": 3400,
+    "hargaJual": 3500,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 176,
+    "barangId": 176,
+    "hargaBeli": 1400,
+    "hargaJual": 2200,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 177,
+    "barangId": 177,
+    "hargaBeli": 0,
+    "hargaJual": 13000,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 178,
+    "barangId": 178,
+    "hargaBeli": 0,
+    "hargaJual": 75000,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 179,
+    "barangId": 179,
+    "hargaBeli": 10500,
+    "hargaJual": 15000,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 180,
+    "barangId": 180,
+    "hargaBeli": 8000,
+    "hargaJual": 13500,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 181,
+    "barangId": 181,
+    "hargaBeli": 0,
+    "hargaJual": 0,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 182,
+    "barangId": 182,
+    "hargaBeli": 0,
+    "hargaJual": 120000,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 183,
+    "barangId": 183,
+    "hargaBeli": 0,
+    "hargaJual": 130000,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 184,
+    "barangId": 184,
+    "hargaBeli": 0,
+    "hargaJual": 145000,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 185,
+    "barangId": 185,
+    "hargaBeli": 49500,
+    "hargaJual": 52500,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 186,
+    "barangId": 186,
+    "hargaBeli": 44000,
+    "hargaJual": 48000,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 187,
+    "barangId": 187,
+    "hargaBeli": 34000,
+    "hargaJual": 38000,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 188,
+    "barangId": 188,
+    "hargaBeli": 47000,
+    "hargaJual": 50500,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 189,
+    "barangId": 189,
+    "hargaBeli": 48500,
+    "hargaJual": 51500,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 190,
+    "barangId": 190,
+    "hargaBeli": 0,
+    "hargaJual": 25000,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 191,
+    "barangId": 191,
+    "hargaBeli": 0,
+    "hargaJual": 15000,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 192,
+    "barangId": 192,
+    "hargaBeli": 28000,
+    "hargaJual": 30500,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 193,
+    "barangId": 193,
+    "hargaBeli": 0,
+    "hargaJual": 0,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 194,
+    "barangId": 194,
+    "hargaBeli": 0,
+    "hargaJual": 50000,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 195,
+    "barangId": 195,
+    "hargaBeli": 0,
+    "hargaJual": 0,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 196,
+    "barangId": 196,
+    "hargaBeli": 26000,
+    "hargaJual": 35000,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 197,
+    "barangId": 197,
+    "hargaBeli": 55000,
+    "hargaJual": 63000,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 198,
+    "barangId": 198,
+    "hargaBeli": 0,
+    "hargaJual": 39000,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 199,
+    "barangId": 199,
+    "hargaBeli": 0,
+    "hargaJual": 88000,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 200,
+    "barangId": 200,
+    "hargaBeli": 0,
+    "hargaJual": 0,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 201,
+    "barangId": 201,
+    "hargaBeli": 0,
+    "hargaJual": 0,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 202,
+    "barangId": 202,
+    "hargaBeli": 0,
+    "hargaJual": 0,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 203,
+    "barangId": 203,
+    "hargaBeli": 0,
+    "hargaJual": 0,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 204,
+    "barangId": 204,
+    "hargaBeli": 0,
+    "hargaJual": 0,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 205,
+    "barangId": 205,
+    "hargaBeli": 7000,
+    "hargaJual": 12000,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 206,
+    "barangId": 206,
+    "hargaBeli": 6000,
+    "hargaJual": 11000,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 207,
+    "barangId": 207,
+    "hargaBeli": 500,
+    "hargaJual": 700,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 208,
+    "barangId": 208,
+    "hargaBeli": 500,
+    "hargaJual": 900,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 209,
+    "barangId": 209,
+    "hargaBeli": 0,
+    "hargaJual": 0,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 210,
+    "barangId": 210,
+    "hargaBeli": 0,
+    "hargaJual": 0,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 211,
+    "barangId": 211,
+    "hargaBeli": 500,
+    "hargaJual": 900,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 212,
+    "barangId": 212,
+    "hargaBeli": 500,
+    "hargaJual": 900,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 213,
+    "barangId": 213,
+    "hargaBeli": 500,
+    "hargaJual": 700,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 214,
+    "barangId": 214,
+    "hargaBeli": 0,
+    "hargaJual": 0,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  },
+  {
+    "id": 215,
+    "barangId": 215,
+    "hargaBeli": 0,
+    "hargaJual": 2000,
+    "effectiveDate": "2026-11-04",
+    "effectiveDateEnd": ""
+  }
+];
 
     const SEED_CUSTOMERS = [
       { id: 1, name: 'PT Pembangunan Jaya', company: 'PT Pembangunan Jaya Tbk', phone: '087711223344', email: 'procurement@pembangunanjaya.com', address: 'Jl. Jendral Sudirman No. 5, Jakarta' },
@@ -1953,6 +5817,35 @@
           const chats = await getAllFromStore('chat_messages');
           const sett = await getFromStore('settings', 'pt_ar_multi_karya_profile');
 
+          // Auto-upgrade katalog bahan baku makanan PT AR Multi Karya jika masih data semen/kosong
+          if (brg.length === 0 || (brg.length <= 5 && brg.some(b => (b.name || '').toLowerCase().includes('semen')))) {
+            console.log('Mengaktifkan katalog 215 Bahan Baku Makanan PT AR Multi Karya...');
+            if (supabaseClient) {
+              try {
+                if (brg.some(b => (b.name || '').toLowerCase().includes('semen'))) {
+                  await supabaseClient.from('price_lists').delete().neq('id', 0);
+                  await supabaseClient.from('barang').delete().neq('id', 0);
+                }
+                for (let i = 0; i < SEED_BARANG.length; i += 50) {
+                  await supabaseClient.from('barang').upsert(SEED_BARANG.slice(i, i + 50));
+                }
+                for (let i = 0; i < SEED_PRICE_LIST.length; i += 50) {
+                  await supabaseClient.from('price_lists').upsert(SEED_PRICE_LIST.slice(i, i + 50));
+                }
+              } catch(errSync) {
+                console.warn('Auto-seed Supabase notice:', errSync);
+              }
+            }
+            fallbackDB['barang'] = [...SEED_BARANG];
+            fallbackDB['price_lists'] = [...SEED_PRICE_LIST];
+            try {
+              localStorage.setItem('fallback_db_barang', JSON.stringify(SEED_BARANG));
+              localStorage.setItem('fallback_db_price_lists', JSON.stringify(SEED_PRICE_LIST));
+            } catch(e) {}
+            brg = [...SEED_BARANG];
+            prc = [...SEED_PRICE_LIST];
+          }
+
           setSuppliers(sup);
           setBarangList(brg);
           setPriceLists(prc);
@@ -2488,6 +6381,8 @@
                   priceAlerts={priceAlerts}
                   currentUser={currentUser}
                   onNavigate={(mod) => setCurrentModule(mod)}
+                  setPriceLists={setPriceLists}
+                  setBarangList={setBarangList}
                 />
               )}
               {currentModule === 'po' && (
@@ -3486,7 +7381,7 @@
               {!isReadOnly && (
                 <label className="bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-semibold px-3 py-2.5 rounded-xl cursor-pointer flex items-center gap-1.5 border border-slate-250 dark:border-slate-700">
                   <i data-lucide="file-input" className="w-3.5 h-3.5"></i> Import Excel
-                  <input type="file" accept=".xlsx, .xls" onChange={handleImportExcel} className="hidden" />
+                  <input type="file" accept=".xlsx, .xls, .csv, text/csv, .txt" onChange={handleImportExcel} className="hidden" />
                 </label>
               )}
               <button 
@@ -3807,20 +7702,39 @@
             const ws = wb.Sheets[wsname];
             const data = XLSX.utils.sheet_to_json(ws, { header: 1 });
 
-            // Expect headers: Kode, Nama, Kategori, Satuan, Stok, Supplier
+            if (!data || data.length === 0) {
+              showToast('File Excel / CSV kosong.', 'error');
+              return;
+            }
+
+            const headerRow = (data[0] || []).map(h => String(h || '').trim().toLowerCase());
+            let codeIdx = headerRow.findIndex(h => (h.includes('kode') || h.includes('code') || h.includes('sku') || h.includes('kd')) && !h.includes('nama'));
+            let nameIdx = headerRow.findIndex(h => (h.includes('nama') || h.includes('item') || h.includes('produk') || h.includes('deskripsi')) && !h.includes('kode') && !h.includes('code'));
+            if (nameIdx === -1) nameIdx = headerRow.findIndex(h => h.includes('barang') && !h.includes('kode') && !h.includes('code'));
+            let catIdx = headerRow.findIndex(h => h.includes('kategori') || h.includes('category') || h.includes('kelompok') || h.includes('jenis'));
+            let unitIdx = headerRow.findIndex(h => h.includes('satuan') || h.includes('unit') || h.includes('uom'));
+            let stockIdx = headerRow.findIndex(h => (h.includes('stok') || h.includes('stock') || h.includes('qty') || h.includes('jumlah')) && !h.includes('harga') && !h.includes('beli') && !h.includes('jual'));
+            let supIdx = headerRow.findIndex(h => h.includes('supplier') || h.includes('pemasok') || h.includes('vendor'));
+
+            if (codeIdx === -1 && nameIdx === -1) {
+              codeIdx = 0; nameIdx = 1; catIdx = 2; unitIdx = 3; stockIdx = 4; supIdx = 5;
+            }
+
             let importedCount = 0;
+            const itemsToSave = [];
+
             for (let i = 1; i < data.length; i++) {
               const row = data[i];
-              if (!row || row.length < 2) continue;
+              if (!row || row.length === 0) continue;
 
-              const rCode = row[0] ? String(row[0]).trim() : '';
-              const rName = row[1] ? String(row[1]).trim() : '';
-              const rKategori = row[2] ? String(row[2]).trim() : 'Bahan Baku';
-              const rUnit = row[3] ? String(row[3]).trim().toUpperCase() : 'SAK';
-              const rStock = row[4] ? Number(row[4]) : 0;
-              const rSupplierName = row[5] ? String(row[5]).trim() : '';
+              const rCode = codeIdx !== -1 && row[codeIdx] ? String(row[codeIdx]).trim() : '';
+              const rName = nameIdx !== -1 && row[nameIdx] ? String(row[nameIdx]).trim() : '';
+              const rKategori = catIdx !== -1 && row[catIdx] ? String(row[catIdx]).trim() : 'Bahan Baku';
+              const rUnit = unitIdx !== -1 && row[unitIdx] ? String(row[unitIdx]).trim().toUpperCase() : 'KG';
+              const rStock = stockIdx !== -1 && row[stockIdx] !== undefined && row[stockIdx] !== '' ? Number(row[stockIdx]) : 100;
+              const rSupplierName = supIdx !== -1 && row[supIdx] ? String(row[supIdx]).trim() : '';
 
-              if (!rCode || !rName) continue;
+              if (!rCode && !rName) continue;
 
               let supId = suppliers[0] ? suppliers[0].id : 1;
               if (rSupplierName) {
@@ -3828,39 +7742,50 @@
                 if (matchedSup) supId = matchedSup.id;
               }
 
+              const existing = barangList.find(b => 
+                (rCode && b.code && b.code.toLowerCase() === rCode.toLowerCase()) || 
+                (!rCode && rName && b.name && b.name.toLowerCase() === rName.toLowerCase())
+              );
+
               const newBarang = {
-                code: rCode,
-                name: rName,
-                kategori: rKategori,
-                unit: rUnit,
-                stock: rStock,
+                code: rCode || ('BRG-' + String(barangList.length + importedCount + 1).padStart(3, '0')),
+                name: rName || rCode,
+                kategori: rKategori || 'Bahan Baku',
+                unit: rUnit || 'KG',
+                stock: isNaN(rStock) ? 100 : rStock,
                 supplierId: supId,
                 notes: 'Diimpor via Excel'
               };
 
-              const existing = barangList.find(b => b.code.toLowerCase() === rCode.toLowerCase());
               if (existing) {
                 newBarang.id = existing.id;
-                newBarang.supplierId = existing.supplierId; // keep original supplier reference
               }
 
-              await saveToStore('barang', newBarang);
+              itemsToSave.push(newBarang);
               importedCount++;
             }
 
-            await logActivity('Import Barang', `${importedCount} barang diimpor dari file Excel.`);
-            showToast(`${importedCount} barang berhasil diimpor dari Excel.`);
-            reloadData();
+            if (supabaseClient) {
+              for (let b = 0; b < itemsToSave.length; b += 50) {
+                await supabaseClient.from('barang').upsert(itemsToSave.slice(b, b + 50));
+              }
+            }
+            for (const item of itemsToSave) {
+              await saveLocalToStore('barang', item);
+            }
+
+            await logActivity('Import Master Barang', `${importedCount} barang diimpor dari file.`);
+            showToast(`🎉 ${importedCount} barang berhasil diimpor dari file.`, 'success');
+            if (reloadData) await reloadData();
           } catch (err) {
-            console.error(err);
-            showToast('Gagal memproses file Excel.', 'error');
+            console.error('Import error BarangModule:', err);
+            showToast('Gagal memproses file Excel: ' + (err.message || 'Format tidak valid'), 'error');
           }
         };
         reader.readAsBinaryString(file);
         e.target.value = ''; // clear input
       };
 
-      // Export Excel using SheetJS
       const handleExportExcel = () => {
         const rows = [
           ['Kode Barang', 'Nama Barang', 'Kategori', 'Satuan', 'Stok Saat Ini', 'Supplier']
@@ -3935,7 +7860,7 @@
               {!isReadOnly && (
                 <label className="bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-semibold px-3 py-2.5 rounded-xl cursor-pointer flex items-center gap-1.5 border border-slate-250 dark:border-slate-700">
                   <i data-lucide="file-input" className="w-3.5 h-3.5"></i> Import Excel
-                  <input type="file" accept=".xlsx, .xls" onChange={handleImportExcel} className="hidden" />
+                  <input type="file" accept=".xlsx, .xls, .csv, text/csv, .txt" onChange={handleImportExcel} className="hidden" />
                 </label>
               )}
               <button 
@@ -4140,7 +8065,7 @@
     // ==========================================
     // 6. PRICE LIST VIEW MODULE
     // ==========================================
-    function PriceListModule({ priceLists, barangList, globalSearch, reloadData, logActivity, showToast, priceAlerts, currentUser, suppliers = [], poList = [], buktiPembelian = [], onNavigate }) {
+    function PriceListModule({ priceLists, barangList, globalSearch, reloadData, logActivity, showToast, priceAlerts, currentUser, suppliers = [], poList = [], buktiPembelian = [], onNavigate, setPriceLists, setBarangList }) {
       const isCustomerOrSppg = (currentUser?.role && currentUser.role.toLowerCase() === 'sppg') || 
                                (currentUser?.role && currentUser.role.toLowerCase() === 'mitra') || 
                                (currentUser?.username && currentUser.username.toLowerCase().includes('sppg'));
@@ -4380,11 +8305,11 @@
             const data = XLSX.utils.sheet_to_json(ws, { header: 1 });
 
             if (!data || data.length === 0) {
-              showToast('File Excel kosong.', 'error');
+              showToast('File Excel / CSV kosong.', 'error');
               return;
             }
 
-            // 1. Deteksi baris header secara cerdas (mencari baris yang mengandung nama/barang/harga/kode)
+            // 1. Deteksi baris header secara cerdas
             let headerRowIdx = 0;
             let bestMatchScore = 0;
             for (let r = 0; r < Math.min(data.length, 10); r++) {
@@ -4404,9 +8329,12 @@
             const headerRow = data[headerRowIdx] || [];
             const headers = headerRow.map(h => String(h || '').trim().toLowerCase());
 
-            // 2. Petakan kolom-kolom penting
-            let codeIdx = headers.findIndex(h => h.includes('kode') || h.includes('code') || h.includes('sku') || h.includes('kd'));
-            let nameIdx = headers.findIndex(h => h.includes('nama') || h.includes('barang') || h.includes('item') || h.includes('produk') || h.includes('deskripsi'));
+            // 2. Petakan kolom-kolom penting tanpa bentrok antara kode dan nama
+            let codeIdx = headers.findIndex(h => (h.includes('kode') || h.includes('code') || h.includes('sku') || h.includes('kd')) && !h.includes('nama'));
+            let nameIdx = headers.findIndex(h => (h.includes('nama') || h.includes('item') || h.includes('produk') || h.includes('deskripsi')) && !h.includes('kode') && !h.includes('code'));
+            if (nameIdx === -1) {
+              nameIdx = headers.findIndex(h => h.includes('barang') && !h.includes('kode') && !h.includes('code'));
+            }
             let unitIdx = headers.findIndex(h => h.includes('satuan') || h.includes('unit') || h.includes('uom'));
             let catIdx = headers.findIndex(h => h.includes('kategori') || h.includes('category') || h.includes('kelompok') || h.includes('jenis'));
             
@@ -4416,7 +8344,6 @@
             // Kolom Harga Jual / Katalog SPPG
             let jualIdx = headers.findIndex(h => (h.includes('jual') || h.includes('price') || h.includes('katalog') || h.includes('sppg')) && !h.includes('beli'));
             
-            // Jika kata 'beli'/'jual' tidak spesifik, cari kolom-kolom yang berlabel harga
             if (beliIdx === -1 || jualIdx === -1) {
               const priceIndices = [];
               headers.forEach((h, idx) => {
@@ -4427,18 +8354,15 @@
               if (jualIdx === -1 && priceIndices.length === 1) jualIdx = priceIndices[0];
             }
 
-            // Tanggal
             let dateIdx = headers.findIndex(h => (h.includes('mulai') || h.includes('berlaku') || h.includes('tanggal') || h.includes('date') || h.includes('tgl')) && !h.includes('hingga') && !h.includes('sampai') && !h.includes('akhir'));
             let dateEndIdx = headers.findIndex(h => h.includes('hingga') || h.includes('sampai') || h.includes('akhir') || h.includes('end'));
 
-            // Fallback jika tidak ada header sama sekali
             if (nameIdx === -1 && headers.length >= 2) {
               nameIdx = headers.length >= 3 ? 1 : 0;
               beliIdx = headers.length >= 3 ? 2 : 1;
               jualIdx = headers.length >= 4 ? 3 : (headers.length >= 3 ? 2 : 1);
             }
 
-            // Helper parser angka (mendukung "Rp 50.000", "50,000", "50.000,00", dll)
             const parseMoney = (val) => {
               if (val === undefined || val === null || val === '') return 0;
               if (typeof val === 'number') return isNaN(val) ? 0 : val;
@@ -4463,7 +8387,6 @@
               return isNaN(n) ? 0 : n;
             };
 
-            // Helper parser tanggal
             const parseDate = (val) => {
               if (!val) return new Date().toISOString().split('T')[0];
               if (typeof val === 'number' && val > 20000 && val < 60000) {
@@ -4483,8 +8406,13 @@
             };
 
             let importedCount = 0;
-            let skippedEmptyCount = 0;
             const todayStr = new Date().toISOString().split('T')[0];
+            const fallbackSupplierId = suppliers[0] ? suppliers[0].id : 1;
+
+            const updatedBarang = [...barangList];
+            const updatedPrices = [...priceLists];
+            const newBarangToSave = [];
+            const pricesToSave = [];
 
             for (let i = headerRowIdx + 1; i < data.length; i++) {
               const row = data[i];
@@ -4495,70 +8423,101 @@
               const rUnit = unitIdx !== -1 && row[unitIdx] ? String(row[unitIdx]).trim().toUpperCase() : 'KG';
               const rCat = catIdx !== -1 && row[catIdx] ? String(row[catIdx]).trim() : 'Bahan Baku';
 
-              if (!rName && !rCode) {
-                skippedEmptyCount++;
-                continue;
-              }
+              if (!rName && !rCode) continue;
 
               const rHargaBeli = beliIdx !== -1 ? parseMoney(row[beliIdx]) : 0;
               const rHargaJual = jualIdx !== -1 ? parseMoney(row[jualIdx]) : 0;
               const rDate = dateIdx !== -1 && row[dateIdx] ? parseDate(row[dateIdx]) : todayStr;
               const rDateEnd = dateEndIdx !== -1 && row[dateEndIdx] ? parseDate(row[dateEndIdx]) : '';
 
-              // Cari barang yang cocok di Master Barang
-              let matchedBarang = barangList.find(b => {
+              // Cocokkan barang: prioritaskan kode jika ada, atau nama barang
+              let matchedBarang = updatedBarang.find(b => {
                 if (rCode && b.code && b.code.toLowerCase() === rCode.toLowerCase()) return true;
-                if (rName && b.name && b.name.toLowerCase() === rName.toLowerCase()) return true;
-                if (rName && b.name && b.name.toLowerCase().replace(/[^a-z0-9]/g, '') === rName.toLowerCase().replace(/[^a-z0-9]/g, '')) return true;
+                if (!rCode && rName && b.name && b.name.toLowerCase() === rName.toLowerCase()) return true;
                 return false;
               });
 
-              // Jika barang belum terdaftar di Master Barang, buatkan otomatis
               if (!matchedBarang) {
-                const fallbackSupplierId = suppliers[0] ? suppliers[0].id : 1;
-                const newBarangData = {
-                  code: rCode || ('BRG-' + String(barangList.length + importedCount + 1).padStart(3, '0')),
-                  name: rName || rCode,
+                const newCode = rCode || ('BRG-' + String(updatedBarang.length + 1).padStart(3, '0'));
+                const newBItem = {
+                  id: updatedBarang.length > 0 ? (Math.max(...updatedBarang.map(x => Number(x.id) || 0)) + 1) : (newBarangToSave.length + 1),
+                  supplierId: fallbackSupplierId,
+                  code: newCode,
+                  name: rName || newCode,
                   unit: rUnit || 'KG',
                   stock: 100,
                   kategori: rCat || 'Bahan Baku',
-                  supplierId: fallbackSupplierId,
-                  notes: 'Dibuat otomatis dari Import Price List'
+                  notes: 'Katalog Bahan Baku PT AR Multi Karya'
                 };
-                const newBId = await saveToStore('barang', newBarangData);
-                matchedBarang = { ...newBarangData, id: newBId };
-                barangList.push(matchedBarang);
+                matchedBarang = newBItem;
+                updatedBarang.push(newBItem);
+                newBarangToSave.push(newBItem);
               }
 
-              const newPriceList = {
-                barangId: Number(matchedBarang.id),
-                hargaBeli: rHargaBeli,
-                hargaJual: rHargaJual,
-                effectiveDate: rDate,
-                effectiveDateEnd: rDateEnd
-              };
-
-              // Cek apakah sudah pernah ada penetapan harga untuk barang & tanggal ini
-              const existing = priceLists.find(p => 
+              // Cari penetapan harga untuk barang & tanggal ini
+              let existingPrice = updatedPrices.find(p => 
                 Number(p.barangId || p.barang_id) === Number(matchedBarang.id) && 
                 (p.effectiveDate || p.effective_date) === rDate
               );
-              if (existing) {
-                newPriceList.id = existing.id;
-              }
 
-              await saveToStore('price_lists', newPriceList);
+              if (existingPrice) {
+                existingPrice.hargaBeli = rHargaBeli;
+                existingPrice.hargaJual = rHargaJual;
+                existingPrice.effectiveDateEnd = rDateEnd;
+                pricesToSave.push(existingPrice);
+              } else {
+                const newPItem = {
+                  id: updatedPrices.length > 0 ? (Math.max(...updatedPrices.map(x => Number(x.id) || 0)) + 1) : (pricesToSave.length + 1),
+                  barangId: Number(matchedBarang.id),
+                  hargaBeli: rHargaBeli,
+                  hargaJual: rHargaJual,
+                  effectiveDate: rDate,
+                  effectiveDateEnd: rDateEnd
+                };
+                updatedPrices.push(newPItem);
+                pricesToSave.push(newPItem);
+              }
               importedCount++;
             }
 
-            await logActivity('Import Price List', `${importedCount} entri harga berhasil diimpor dari file Excel.`);
+            // Update UI State seketika agar langsung terlihat
+            if (setBarangList) setBarangList([...updatedBarang]);
+            if (setPriceLists) setPriceLists([...updatedPrices]);
+
+            // Simpan ke database Supabase dan Local DB secara batch cepat
+            if (supabaseClient) {
+              try {
+                if (newBarangToSave.length > 0) {
+                  for (let b = 0; b < newBarangToSave.length; b += 50) {
+                    await supabaseClient.from('barang').upsert(newBarangToSave.slice(b, b + 50));
+                  }
+                }
+                if (pricesToSave.length > 0) {
+                  for (let p = 0; p < pricesToSave.length; p += 50) {
+                    await supabaseClient.from('price_lists').upsert(pricesToSave.slice(p, p + 50));
+                  }
+                }
+              } catch(supErr) {
+                console.warn('Batch Supabase save notice:', supErr);
+              }
+            }
+
+            // Simpan ke Local Storage / Fallback DB
+            try {
+              fallbackDB['barang'] = updatedBarang;
+              fallbackDB['price_lists'] = updatedPrices;
+              localStorage.setItem('fallback_db_barang', JSON.stringify(updatedBarang));
+              localStorage.setItem('fallback_db_price_lists', JSON.stringify(updatedPrices));
+            } catch(e) {}
+
+            await logActivity('Import Price List', `${importedCount} harga barang berhasil diimpor dari file Excel/CSV.`);
 
             if (importedCount === 0) {
-              showToast('Tidak ada data yang berhasil diimpor. Pastikan Excel memiliki kolom Nama Barang dan Harga.', 'error');
+              showToast('Tidak ada data yang berhasil diimpor. Pastikan file memiliki kolom Nama Barang dan Harga.', 'error');
             } else {
-              showToast(`🎉 Berhasil mengimpor ${importedCount} harga barang dari Excel!`, 'success');
+              showToast(`🎉 Berhasil memproses & mengimpor ${importedCount} item harga dari file!`, 'success');
             }
-            await reloadData();
+            if (reloadData) await reloadData();
           } catch (err) {
             console.error('Import error:', err);
             showToast('Gagal memproses file Excel: ' + (err.message || 'Format tidak valid'), 'error');
@@ -4568,7 +8527,6 @@
         e.target.value = ''; // clear input
       };
 
-      // Export Excel using SheetJS (Rapi & Langsung Berfungsi Sebagai Template)
       const handleExportExcel = () => {
         const rows = [
           ['Kode Barang', 'Nama Barang', 'Kategori', 'Satuan', 'Harga Beli (Modal)', 'Harga Jual (Katalog SPPG)', 'Tanggal Mulai Berlaku', 'Berlaku Hingga']
@@ -4986,7 +8944,7 @@
               {!isReadOnly && (
                 <label className="bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-semibold px-3 py-2.5 rounded-xl cursor-pointer flex items-center gap-1.5 border border-slate-250 dark:border-slate-700">
                   <i data-lucide="file-input" className="w-3.5 h-3.5"></i> Import Excel
-                  <input type="file" accept=".xlsx, .xls" onChange={handleImportExcel} className="hidden" />
+                  <input type="file" accept=".xlsx, .xls, .csv, text/csv, .txt" onChange={handleImportExcel} className="hidden" />
                 </label>
               )}
               <button 
@@ -6579,7 +10537,7 @@
               {!isReadOnly && !onlyShowShipments && (
                 <label className="bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-semibold px-3 py-2.5 rounded-xl cursor-pointer flex items-center gap-1.5 border border-slate-250 dark:border-slate-700">
                   <i data-lucide="file-input" className="w-3.5 h-3.5"></i> Import Excel
-                  <input type="file" accept=".xlsx, .xls" onChange={handleImportExcel} className="hidden" />
+                  <input type="file" accept=".xlsx, .xls, .csv, text/csv, .txt" onChange={handleImportExcel} className="hidden" />
                 </label>
               )}
               <button 
@@ -7755,7 +11713,7 @@ customers={customers}
               {!isReadOnly && (
                 <label className="bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-semibold px-3 py-2.5 rounded-xl cursor-pointer flex items-center gap-1.5 border border-slate-250 dark:border-slate-700">
                   <i data-lucide="file-input" className="w-3.5 h-3.5"></i> Import Excel
-                  <input type="file" accept=".xlsx, .xls" onChange={handleImportExcel} className="hidden" />
+                  <input type="file" accept=".xlsx, .xls, .csv, text/csv, .txt" onChange={handleImportExcel} className="hidden" />
                 </label>
               )}
               <button 
@@ -8373,7 +12331,7 @@ customers={customers}
               {!isReadOnly && (
                 <label className="bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-semibold px-3 py-2.5 rounded-xl cursor-pointer flex items-center gap-1.5 border border-slate-250 dark:border-slate-700">
                   <i data-lucide="file-input" className="w-3.5 h-3.5"></i> Import Excel
-                  <input type="file" accept=".xlsx, .xls" onChange={handleImportExcel} className="hidden" />
+                  <input type="file" accept=".xlsx, .xls, .csv, text/csv, .txt" onChange={handleImportExcel} className="hidden" />
                 </label>
               )}
               <button 
@@ -9107,7 +13065,7 @@ customers={customers}
               {canCreateInvoice && (
                 <label className="bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-semibold px-3 py-2.5 rounded-xl cursor-pointer flex items-center gap-1.5 border border-slate-250 dark:border-slate-700">
                   <i data-lucide="file-input" className="w-3.5 h-3.5"></i> Import Excel
-                  <input type="file" accept=".xlsx, .xls" onChange={handleImportExcel} className="hidden" />
+                  <input type="file" accept=".xlsx, .xls, .csv, text/csv, .txt" onChange={handleImportExcel} className="hidden" />
                 </label>
               )}
               <button 
