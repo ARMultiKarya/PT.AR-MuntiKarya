@@ -2154,6 +2154,7 @@
       }, [currentModule, invoices, buktiPembelian, currentUser]);
 
       const getNavigationItems = (role) => {
+        const cleanRole = (role || '').toLowerCase().trim();
         const allItems = [
           { id: 'dashboard', name: 'Dashboard', icon: 'layout-dashboard', roles: ['admin', 'finance', 'sppg', 'mitra'] },
           { id: 'supplier', name: 'Master Supplier', icon: 'truck', roles: ['admin', 'finance'] },
@@ -2171,7 +2172,7 @@
           { id: 'settings', name: 'Pengaturan Sistem', icon: 'sliders', roles: ['admin'] },
           { id: 'profile_settings', name: 'Pengaturan Akun', icon: 'settings', roles: ['admin', 'finance', 'sppg', 'mitra'] }
         ];
-        return allItems.filter(item => item.roles.includes(role));
+        return allItems.filter(item => item.roles.map(r => r.toLowerCase()).includes(cleanRole));
       };
 
       const handleLogin = (user) => {
@@ -3021,6 +3022,110 @@
                               </span>
                             </td>
                             <td className="py-3 px-4 text-right font-extrabold text-slate-900 dark:text-white">{formatRupiah(amount)}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+
+            {/* Quick Catalog & Stock for SPPG / Mitra directly on Dashboard */}
+            <div className="bg-white dark:bg-slate-955 p-6 rounded-2xl border border-slate-150 dark:border-slate-850 shadow-sm space-y-4">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 pb-3 border-b border-slate-100 dark:border-slate-850">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-lg bg-primary-50 dark:bg-primary-955/30 text-primary-600 flex items-center justify-center font-bold">
+                      <i data-lucide="tags" className="w-4 h-4"></i>
+                    </div>
+                    <h3 className="font-extrabold text-sm text-slate-855 dark:text-white">Katalog Harga & Ketersediaan Stok Fisik</h3>
+                  </div>
+                  <span className="text-[11px] text-slate-400 font-medium block mt-1">
+                    Daftar harga jual resmi dan ketersediaan stok material di gudang PT AR MULTI KARYA untuk pemesanan Anda.
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => onNavigate && onNavigate('price_list')}
+                  className="px-3.5 py-2 rounded-xl text-xs font-bold bg-primary-50 dark:bg-primary-955/30 text-primary-600 dark:text-primary-300 hover:bg-primary-100 border border-primary-200 dark:border-primary-800 flex items-center gap-1.5 transition-all shadow-sm flex-shrink-0"
+                >
+                  <span>Buka Katalog Lengkap</span>
+                  <i data-lucide="chevron-right" className="w-3.5 h-3.5"></i>
+                </button>
+              </div>
+
+              {barangList.length === 0 ? (
+                <div className="text-center py-8 text-slate-400 text-xs font-medium italic">
+                  Belum ada data barang di katalog.
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse text-xs">
+                    <thead>
+                      <tr className="border-b border-slate-150 dark:border-slate-850 text-slate-400 font-bold uppercase tracking-wider text-[10px]">
+                        <th className="py-3 px-3 w-10 text-center">No</th>
+                        <th className="py-3 px-4">Barang & Spesifikasi</th>
+                        <th className="py-3 px-3">Kategori</th>
+                        <th className="py-3 px-3 text-center">Satuan</th>
+                        <th className="py-3 px-4 text-right">Harga Resmi (Katalog)</th>
+                        <th className="py-3 px-3 text-center">Status Stok</th>
+                        <th className="py-3 px-4 text-right">Stok Tersedia</th>
+                        <th className="py-3 px-4 text-center w-28">Pemesanan</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 dark:divide-slate-900 font-semibold">
+                      {barangList.map((b, idx) => {
+                        const bId = Number(b.id);
+                        const m = priceLists.filter(p => Number(p.barangId || p.barang_id) === bId)
+                                            .sort((x, y) => new Date(y.effectiveDate || y.effective_date || 0) - new Date(x.effectiveDate || x.effective_date || 0));
+                        const pVal = m.length > 0 ? (Number(m[0].hargaJual || m[0].harga_jual) || 0) : 0;
+                        const stockVal = Number(b.stock) || 0;
+                        const isReady = stockVal > 50;
+                        const isLimited = stockVal > 0 && stockVal <= 50;
+                        const isEmpty = stockVal <= 0;
+
+                        return (
+                          <tr key={b.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-900/30 transition-colors">
+                            <td className="py-3.5 px-3 text-center text-slate-400 font-mono">{idx + 1}</td>
+                            <td className="py-3.5 px-4">
+                              <div className="font-extrabold text-slate-855 dark:text-white text-xs">{b.name}</div>
+                              <span className="text-[10px] text-slate-400 font-mono">{b.code}</span>
+                            </td>
+                            <td className="py-3.5 px-3">
+                              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+                                {b.kategori || 'Umum'}
+                              </span>
+                            </td>
+                            <td className="py-3.5 px-3 text-center text-slate-500 uppercase font-bold text-[11px]">{b.unit || '-'}</td>
+                            <td className="py-3.5 px-4 text-right">
+                              {pVal > 0 ? (
+                                <span className="font-mono font-black text-sm text-primary-600 dark:text-primary-400">{formatRupiah(pVal)}</span>
+                              ) : (
+                                <span className="text-amber-600 text-[10px] bg-amber-50 dark:bg-amber-955/30 px-2 py-0.5 rounded border border-amber-200 dark:border-amber-900/40">Menunggu Penetapan</span>
+                              )}
+                            </td>
+                            <td className="py-3.5 px-3 text-center">
+                              {isReady && <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">Ready Stock</span>}
+                              {isLimited && <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-amber-100 text-amber-700 dark:bg-amber-955/40 dark:text-amber-300">Stok Terbatas</span>}
+                              {isEmpty && <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400">Indent</span>}
+                            </td>
+                            <td className="py-3.5 px-4 text-right">
+                              <span className={`font-mono font-bold ${isEmpty ? 'text-slate-400' : isLimited ? 'text-amber-600' : 'text-emerald-600'}`}>
+                                {stockVal.toLocaleString('id-ID')}
+                              </span>
+                              <span className="text-[10px] text-slate-400 ml-1 uppercase">{b.unit}</span>
+                            </td>
+                            <td className="py-3.5 px-4 text-center">
+                              <button
+                                type="button"
+                                onClick={() => onNavigate && onNavigate('po')}
+                                className="px-3 py-1 rounded-lg bg-primary-600 hover:bg-primary-700 text-white font-bold text-[10px] transition-all flex items-center gap-1 mx-auto shadow-sm active:scale-95"
+                              >
+                                <i data-lucide="shopping-cart" className="w-3 h-3"></i>
+                                Pesan
+                              </button>
+                            </td>
                           </tr>
                         );
                       })}
@@ -4036,7 +4141,10 @@
     // 6. PRICE LIST VIEW MODULE
     // ==========================================
     function PriceListModule({ priceLists, barangList, globalSearch, reloadData, logActivity, showToast, priceAlerts, currentUser, suppliers = [], poList = [], buktiPembelian = [], onNavigate }) {
-      const isSppg = currentUser?.role === 'sppg';
+      const isCustomerOrSppg = (currentUser?.role && currentUser.role.toLowerCase() === 'sppg') || 
+                               (currentUser?.role && currentUser.role.toLowerCase() === 'mitra') || 
+                               (currentUser?.username && currentUser.username.toLowerCase().includes('sppg'));
+      const isSppg = isCustomerOrSppg;
       const isReadOnly = currentUser?.role !== 'admin' && currentUser?.role !== 'finance';
       const [modalOpen, setModalOpen] = React.useState(false);
       const [editingPriceId, setEditingPriceId] = React.useState(null);
@@ -4060,7 +4168,17 @@
         return [prev, currentMonthIndex];
       });
       const [priceType, setPriceType] = React.useState('jual'); // 'jual' or 'beli'
-      const [viewMode, setViewMode] = React.useState('matrix'); // 'matrix' or 'history'
+      const [viewMode, setViewMode] = React.useState('simple'); // 'simple', 'matrix', 'history'
+      const [simpleCategory, setSimpleCategory] = React.useState('Semua');
+      const [simpleStatusFilter, setSimpleStatusFilter] = React.useState('all');
+
+      const getLatestPrice = React.useCallback((bId) => {
+        const idNum = Number(bId);
+        const matches = priceLists.filter(p => Number(p.barangId || p.barang_id) === idNum);
+        if (matches.length === 0) return null;
+        matches.sort((a, b) => new Date(b.effectiveDate || b.effective_date || 0) - new Date(a.effectiveDate || a.effective_date || 0));
+        return matches[0];
+      }, [priceLists]);
 
       // Bulk Selection States
       const [selectedIds, setSelectedIds] = React.useState([]);
@@ -4111,6 +4229,7 @@
       };
 
       const getPriceForWeek = (bId, targetYear, targetMonth, targetWeek, type) => {
+        const idNum = Number(bId);
         const firstDayOfMonth = new Date(targetYear, targetMonth, 1);
         const startDayOfWeek = firstDayOfMonth.getDay();
         const daysInFirstWeek = 7 - startDayOfWeek;
@@ -4120,29 +4239,35 @@
         const totalDays = new Date(targetYear, targetMonth + 1, 0).getDate();
         if (endDayOfMonth > totalDays) endDayOfMonth = totalDays;
 
+        const targetWeekStartStr = `${targetYear}-${String(targetMonth + 1).padStart(2, '0')}-${String(startDayOfMonth).padStart(2, '0')}`;
         const targetWeekEndStr = `${targetYear}-${String(targetMonth + 1).padStart(2, '0')}-${String(endDayOfMonth).padStart(2, '0')}`;
         
         // Cari semua entri harga untuk barang ini yang tanggal berlakunya <= akhir minggu target
         const validEntries = priceLists.filter(p => {
-          if (p.barangId !== bId) return false;
-          if (!p.effectiveDate) return false;
-          return p.effectiveDate <= targetWeekEndStr;
+          if (Number(p.barangId || p.barang_id) !== idNum) return false;
+          const eff = p.effectiveDate || p.effective_date;
+          if (!eff) return false;
+          return eff <= targetWeekEndStr;
         });
 
-        if (validEntries.length === 0) {
-          return 0;
+        if (validEntries.length > 0) {
+          validEntries.sort((a, b) => new Date(b.effectiveDate || b.effective_date || 0) - new Date(a.effectiveDate || a.effective_date || 0));
+          const latest = validEntries[0];
+          const endDate = latest.effectiveDateEnd || latest.effective_date_end;
+          if (!endDate || endDate >= targetWeekStartStr) {
+            const val = type === 'jual' ? (Number(latest.hargaJual ?? latest.harga_jual) || 0) : (Number(latest.hargaBeli ?? latest.harga_beli) || 0);
+            if (val > 0) return val;
+          }
         }
 
-        // Urutkan dari tanggal berlaku paling baru
-        validEntries.sort((a, b) => b.effectiveDate.localeCompare(a.effectiveDate));
-        const latest = validEntries[0];
-
-        // Jika ada batas tanggal selesai (effectiveDateEnd) dan sudah berakhir sebelum minggu target
-        if (latest.effectiveDateEnd && latest.effectiveDateEnd < `${targetYear}-${String(targetMonth + 1).padStart(2, '0')}-${String(startDayOfMonth).padStart(2, '0')}`) {
-          return 0;
+        // Smart fallback: jika belum ada penetapan harga khusus di minggu ini, ambil harga aktif barang agar Wk1..Wk5 tidak kosong (-)
+        const allForBarang = priceLists.filter(p => Number(p.barangId || p.barang_id) === idNum && (p.effectiveDate || p.effective_date));
+        if (allForBarang.length > 0) {
+          allForBarang.sort((a, b) => new Date(b.effectiveDate || b.effective_date || 0) - new Date(a.effectiveDate || a.effective_date || 0));
+          const latest = allForBarang[0];
+          return type === 'jual' ? (Number(latest.hargaJual ?? latest.harga_jual) || 0) : (Number(latest.hargaBeli ?? latest.harga_beli) || 0);
         }
-
-        return type === 'jual' ? (latest.hargaJual || 0) : (latest.hargaBeli || 0);
+        return 0;
       };
 
       const openPriceModal = (bId = null, existingEntry = null) => {
@@ -4167,19 +4292,20 @@
 
         if (existingEntry) {
           setEditingPriceId(existingEntry.id);
-          setBarangId(String(existingEntry.barangId));
-          setHargaBeli(String(existingEntry.hargaBeli || 0));
-          setHargaJual(String(existingEntry.hargaJual || 0));
-          setEffectiveDate(existingEntry.effectiveDate || new Date().toISOString().split('T')[0]);
-          setEffectiveDateEnd(existingEntry.effectiveDateEnd || '');
+          setBarangId(String(existingEntry.barangId || existingEntry.barang_id || ''));
+          setHargaBeli(String(existingEntry.hargaBeli ?? existingEntry.harga_beli ?? 0));
+          setHargaJual(String(existingEntry.hargaJual ?? existingEntry.harga_jual ?? 0));
+          setEffectiveDate(existingEntry.effectiveDate || existingEntry.effective_date || new Date().toISOString().split('T')[0]);
+          setEffectiveDateEnd(existingEntry.effectiveDateEnd || existingEntry.effective_date_end || '');
         } else if (bId) {
           setEditingPriceId(null);
           setBarangId(String(bId));
-          const matches = priceLists.filter(p => p.barangId === Number(bId));
+          const idNum = Number(bId);
+          const matches = priceLists.filter(p => Number(p.barangId || p.barang_id) === idNum);
           if (matches.length > 0) {
-            matches.sort((a, b) => new Date(b.effectiveDate) - new Date(a.effectiveDate));
-            setHargaBeli(String(matches[0].hargaBeli || 0));
-            setHargaJual(String(matches[0].hargaJual || 0));
+            matches.sort((a, b) => new Date(b.effectiveDate || b.effective_date || 0) - new Date(a.effectiveDate || a.effective_date || 0));
+            setHargaBeli(String(matches[0].hargaBeli ?? matches[0].harga_beli ?? 0));
+            setHargaJual(String(matches[0].hargaJual ?? matches[0].harga_jual ?? 0));
           } else {
             setHargaBeli('');
             setHargaJual('');
@@ -4688,12 +4814,13 @@
                             </td>
                             <td className="py-4 px-6 text-right font-mono font-bold">
                               {(() => {
-                                const m = priceLists.filter(p => p.barangId === b.id).sort((x, y) => new Date(y.effectiveDate) - new Date(x.effectiveDate));
-                                const pVal = m.length > 0 ? (m[0].hargaJual || 0) : 0;
+                                const bId = Number(b.id);
+                                const m = priceLists.filter(p => Number(p.barangId || p.barang_id) === bId).sort((x, y) => new Date(y.effectiveDate || y.effective_date || 0) - new Date(x.effectiveDate || x.effective_date || 0));
+                                const pVal = m.length > 0 ? (Number(m[0].hargaJual || m[0].harga_jual) || 0) : 0;
                                 return pVal > 0 ? (
-                                  <span className="text-primary-600 dark:text-primary-400 font-black">{formatRupiah(pVal)}</span>
+                                  <span className="text-primary-600 dark:text-primary-400 font-black text-sm">{formatRupiah(pVal)}</span>
                                 ) : (
-                                  <span className="text-slate-400 text-[10px] italic font-normal">Belum diatur</span>
+                                  <span className="text-amber-600 text-[10px] bg-amber-50 dark:bg-amber-955/30 px-2 py-0.5 rounded border border-amber-200 dark:border-amber-900/40">Menunggu Penetapan Finance</span>
                                 );
                               })()}
                             </td>
@@ -4845,29 +4972,44 @@
             <div className="flex flex-wrap gap-6 items-center">
               {/* Toggle Mode Tampilan */}
               <div>
-                <label className="block text-[10px] text-slate-400 uppercase tracking-wide mb-1.5">Mode Tampilan</label>
-                <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-1 rounded-xl flex gap-1">
+                <label className="block text-[10px] text-slate-400 uppercase tracking-wide mb-1.5">Pilih Tampilan Price List</label>
+                <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-1 rounded-xl flex flex-wrap gap-1">
+                  <button 
+                    type="button"
+                    onClick={() => setViewMode('simple')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                      viewMode === 'simple' 
+                        ? 'bg-white dark:bg-slate-955 text-primary-600 dark:text-primary-400 shadow-sm border border-slate-200 dark:border-slate-800 ring-1 ring-primary-500/20' 
+                        : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                    }`}
+                  >
+                    <i data-lucide="list" className="w-3.5 h-3.5"></i>
+                    <span>Daftar Harga Standar (Mudah)</span>
+                    <span className="text-[9px] bg-primary-100 dark:bg-primary-955/40 text-primary-700 dark:text-primary-300 px-1.5 py-0.2 rounded-full font-bold">Rekomendasi</span>
+                  </button>
                   <button 
                     type="button"
                     onClick={() => setViewMode('matrix')}
-                    className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase transition-all ${
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
                       viewMode === 'matrix' 
                         ? 'bg-white dark:bg-slate-955 text-primary-600 dark:text-primary-400 shadow-sm border border-slate-200 dark:border-slate-800' 
-                        : 'text-slate-500 hover:text-slate-800'
+                        : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
                     }`}
                   >
-                    Matriks Mingguan
+                    <i data-lucide="calendar" className="w-3.5 h-3.5"></i>
+                    <span>Matriks Mingguan (Wk 1-5)</span>
                   </button>
                   <button 
                     type="button"
                     onClick={() => setViewMode('history')}
-                    className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase transition-all ${
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
                       viewMode === 'history' 
                         ? 'bg-white dark:bg-slate-955 text-primary-600 dark:text-primary-400 shadow-sm border border-slate-200 dark:border-slate-800' 
-                        : 'text-slate-500 hover:text-slate-800'
+                        : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
                     }`}
                   >
-                    Riwayat Penetapan
+                    <i data-lucide="history" className="w-3.5 h-3.5"></i>
+                    <span>Riwayat Perubahan ({priceLists.length})</span>
                   </button>
                 </div>
               </div>
@@ -5002,7 +5144,247 @@
             </div>
           )}
 
-          {viewMode === 'matrix' ? (
+          {/* TAMPILAN 1: DAFTAR HARGA STANDAR (SIMPEL & MUDAH DIFAHAMI) */}
+          {viewMode === 'simple' && (
+            <div className="space-y-6 animate-fade-in">
+              {/* KPI Cards */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                <div className="bg-white dark:bg-slate-955 p-4 rounded-2xl border border-slate-150 dark:border-slate-850 shadow-sm flex items-center gap-3.5">
+                  <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-955/30 text-blue-600 flex items-center justify-center font-bold flex-shrink-0">
+                    <i data-lucide="package" className="w-5 h-5"></i>
+                  </div>
+                  <div>
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Total Barang</span>
+                    <span className="text-xl font-extrabold text-slate-800 dark:text-white leading-tight">{barangList.length}</span>
+                  </div>
+                </div>
+
+                <div className="bg-white dark:bg-slate-955 p-4 rounded-2xl border border-slate-150 dark:border-slate-850 shadow-sm flex items-center gap-3.5">
+                  <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-955/30 text-emerald-600 flex items-center justify-center font-bold flex-shrink-0">
+                    <i data-lucide="check-circle" className="w-5 h-5"></i>
+                  </div>
+                  <div>
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Harga Aktif</span>
+                    <span className="text-xl font-extrabold text-emerald-600 dark:text-emerald-400 leading-tight">
+                      {barangList.filter(b => getLatestPrice(b.id) !== null).length}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="bg-white dark:bg-slate-955 p-4 rounded-2xl border border-slate-150 dark:border-slate-850 shadow-sm flex items-center gap-3.5">
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold flex-shrink-0 ${barangList.filter(b => getLatestPrice(b.id) === null).length > 0 ? 'bg-amber-50 dark:bg-amber-955/40 text-amber-600' : 'bg-slate-50 dark:bg-slate-900 text-slate-400'}`}>
+                    <i data-lucide="alert-circle" className="w-5 h-5"></i>
+                  </div>
+                  <div>
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Belum Ada Harga</span>
+                    <span className={`text-xl font-extrabold leading-tight ${barangList.filter(b => getLatestPrice(b.id) === null).length > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-slate-400'}`}>
+                      {barangList.filter(b => getLatestPrice(b.id) === null).length}
+                    </span>
+                  </div>
+                </div>
+
+                {!isReadOnly && (
+                  <div className="bg-white dark:bg-slate-955 p-4 rounded-2xl border border-slate-150 dark:border-slate-850 shadow-sm flex items-center gap-3.5">
+                    <div className="w-10 h-10 rounded-xl bg-primary-50 dark:bg-primary-955/30 text-primary-600 flex items-center justify-center font-bold flex-shrink-0">
+                      <i data-lucide="trending-up" className="w-5 h-5"></i>
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Estimasi Margin</span>
+                      <span className="text-xl font-extrabold text-primary-600 dark:text-primary-400 leading-tight">
+                        {(() => {
+                          const validPrices = barangList.map(b => getLatestPrice(b.id)).filter(p => p && Number(p.hargaBeli) > 0 && Number(p.hargaJual) > 0);
+                          if (validPrices.length === 0) return '0%';
+                          const avg = Math.round(validPrices.reduce((s, p) => s + (((Number(p.hargaJual) - Number(p.hargaBeli)) / Number(p.hargaBeli)) * 100), 0) / validPrices.length);
+                          return `+${avg}%`;
+                        })()}
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Filter Chips */}
+              <div className="bg-white dark:bg-slate-955 p-4 rounded-2xl border border-slate-150 dark:border-slate-850 flex flex-wrap gap-4 items-center justify-between text-xs font-semibold shadow-sm">
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <span className="text-[10px] text-slate-400 uppercase font-bold mr-1">Kategori:</span>
+                  {['Semua', ...new Set(barangList.map(b => b.kategori || 'Bahan Baku'))].map(cat => (
+                    <button
+                      key={cat}
+                      type="button"
+                      onClick={() => setSimpleCategory(cat)}
+                      className={`px-3 py-1 rounded-xl text-xs font-bold transition-all ${
+                        simpleCategory === cat
+                          ? 'bg-primary-600 text-white shadow-sm'
+                          : 'bg-slate-100 dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800'
+                      }`}
+                    >
+                      {cat}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] text-slate-400 uppercase font-bold">Status:</span>
+                  <select
+                    value={simpleStatusFilter}
+                    onChange={(e) => setSimpleStatusFilter(e.target.value)}
+                    className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-3 py-1.5 rounded-xl font-bold dark:text-white focus:outline-none text-xs"
+                  >
+                    <option value="all">Semua Status</option>
+                    <option value="priced">✓ Sudah Ada Harga</option>
+                    <option value="unpriced">⚠️ Belum Ada Harga</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Tabel Daftar Harga Standar */}
+              <div className="bg-white dark:bg-slate-955 rounded-2xl border border-slate-150 dark:border-slate-855 shadow-sm overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse text-xs">
+                    <thead>
+                      <tr className="bg-slate-50 dark:bg-slate-900/80 border-b border-slate-150 dark:border-slate-850 text-slate-400 font-bold uppercase tracking-wider text-[10px]">
+                        <th className="py-4 px-4 text-center w-12">No</th>
+                        <th className="py-4 px-6 min-w-[220px]">Barang & Satuan</th>
+                        <th className="py-4 px-4 min-w-[120px]">Kategori</th>
+                        {!isReadOnly && <th className="py-4 px-6 text-right min-w-[150px]">Harga Beli (Modal/HPP)</th>}
+                        <th className="py-4 px-6 text-right min-w-[160px]">Harga Jual (Katalog SPPG)</th>
+                        {!isReadOnly && <th className="py-4 px-4 text-right min-w-[140px]">Margin Laba</th>}
+                        <th className="py-4 px-4 text-center min-w-[130px]">Mulai Berlaku</th>
+                        <th className="py-4 px-4 text-center min-w-[120px]">Status</th>
+                        {!isReadOnly && <th className="py-4 px-6 text-right min-w-[130px]">Aksi</th>}
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 dark:divide-slate-900 font-semibold">
+                      {barangList
+                        .filter(b => {
+                          if (simpleCategory !== 'Semua' && (b.kategori || 'Bahan Baku') !== simpleCategory) return false;
+                          const p = getLatestPrice(b.id);
+                          if (simpleStatusFilter === 'priced' && !p) return false;
+                          if (simpleStatusFilter === 'unpriced' && p) return false;
+                          const q = (globalSearch || '').toLowerCase().trim();
+                          if (q) {
+                            return (b.name && b.name.toLowerCase().includes(q)) || (b.code && b.code.toLowerCase().includes(q));
+                          }
+                          return true;
+                        })
+                        .map((b, idx) => {
+                          const latestPrice = getLatestPrice(b.id);
+                          const hasPrice = latestPrice !== null;
+                          const buyPrice = Number(latestPrice?.hargaBeli || latestPrice?.harga_beli) || 0;
+                          const sellPrice = Number(latestPrice?.hargaJual || latestPrice?.harga_jual) || 0;
+                          const marginRp = sellPrice - buyPrice;
+                          const marginPct = buyPrice > 0 ? Math.round((marginRp / buyPrice) * 100) : 0;
+
+                          return (
+                            <tr key={b.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-900/30 transition-colors">
+                              <td className="py-4 px-4 text-center text-slate-400 font-mono">{idx + 1}</td>
+                              <td className="py-4 px-6">
+                                <div className="font-extrabold text-sm text-slate-855 dark:text-white leading-tight">{b.name}</div>
+                                <div className="flex items-center gap-2 mt-1 text-[11px] text-slate-400 font-medium">
+                                  <span className="font-mono font-bold text-primary-600 dark:text-primary-400">{b.code}</span>
+                                  <span>•</span>
+                                  <span className={`px-1.5 py-0.2 rounded text-[9px] font-bold ${
+                                    b.stock > 50 ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300' :
+                                    b.stock > 0 ? 'bg-amber-50 text-amber-700 dark:bg-amber-955/40 dark:text-amber-300' :
+                                    'bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-300'
+                                  }`}>
+                                    Stok: {b.stock || 0} {b.unit}
+                                  </span>
+                                </div>
+                              </td>
+                              <td className="py-4 px-4">
+                                <span className="inline-block px-2.5 py-1 rounded-lg text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+                                  {b.kategori || 'Bahan Baku'}
+                                </span>
+                              </td>
+                              {!isReadOnly && (
+                                <td className="py-4 px-6 text-right font-mono font-bold text-slate-700 dark:text-slate-300">
+                                  {hasPrice && buyPrice > 0 ? (
+                                    formatRupiah(buyPrice)
+                                  ) : (
+                                    <span className="text-slate-400 font-normal italic">-</span>
+                                  )}
+                                </td>
+                              )}
+                              <td className="py-4 px-6 text-right">
+                                {hasPrice && sellPrice > 0 ? (
+                                  <span className="font-mono font-black text-sm text-primary-600 dark:text-primary-400">
+                                    {formatRupiah(sellPrice)}
+                                  </span>
+                                ) : (
+                                  <span className="text-amber-600 dark:text-amber-400 font-medium text-xs bg-amber-50 dark:bg-amber-955/30 px-2 py-0.5 rounded-lg border border-amber-200 dark:border-amber-900/50">
+                                    Belum Ditetapkan
+                                  </span>
+                                )}
+                              </td>
+                              {!isReadOnly && (
+                                <td className="py-4 px-4 text-right">
+                                  {hasPrice && buyPrice > 0 && sellPrice > 0 ? (
+                                    <span className={`inline-block px-2 py-0.5 rounded-lg text-[10px] font-bold font-mono ${
+                                      marginRp > 0 
+                                        ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800' 
+                                        : marginRp === 0 
+                                          ? 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400' 
+                                          : 'bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-300 border border-red-200'
+                                    }`}>
+                                      {marginRp > 0 ? `+${formatRupiah(marginRp)}` : formatRupiah(marginRp)}
+                                      <span className="ml-1 opacity-80">({marginPct}%)</span>
+                                    </span>
+                                  ) : (
+                                    <span className="text-slate-400 font-normal text-[11px]">-</span>
+                                  )}
+                                </td>
+                              )}
+                              <td className="py-4 px-4 text-center">
+                                {hasPrice && (latestPrice?.effectiveDate || latestPrice?.effective_date) ? (
+                                  <span className="text-slate-600 dark:text-slate-300 font-mono text-[11px]">
+                                    {latestPrice.effectiveDate || latestPrice.effective_date}
+                                  </span>
+                                ) : (
+                                  <span className="text-slate-400 italic text-[11px]">-</span>
+                                )}
+                              </td>
+                              <td className="py-4 px-4 text-center">
+                                {hasPrice ? (
+                                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-100/70 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                                    Aktif
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-100/70 text-amber-700 dark:bg-amber-955/40 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
+                                    Perlu Diisi
+                                  </span>
+                                )}
+                              </td>
+                              {!isReadOnly && (
+                                <td className="py-4 px-6 text-right">
+                                  <button
+                                    type="button"
+                                    onClick={() => openPriceModal(b.id)}
+                                    className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 ml-auto transition-all shadow-sm ${
+                                      hasPrice
+                                        ? 'bg-primary-50 dark:bg-primary-955/30 text-primary-600 dark:text-primary-300 hover:bg-primary-600 hover:text-white border border-primary-200 dark:border-primary-800'
+                                        : 'bg-amber-500 hover:bg-amber-600 text-white shadow-amber-900/20'
+                                    }`}
+                                  >
+                                    <i data-lucide={hasPrice ? "edit-3" : "plus"} className="w-3.5 h-3.5"></i>
+                                    <span>{hasPrice ? 'Update Harga' : 'Tentukan Harga'}</span>
+                                  </button>
+                                </td>
+                              )}
+                            </tr>
+                          );
+                        })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAMPILAN 2: MATRIKS MINGGUAN (WK 1 - WK 5) */}
+          {viewMode === 'matrix' && (
             <div className="bg-white dark:bg-slate-955 rounded-2xl border border-slate-150 dark:border-slate-855 shadow-sm overflow-hidden animate-fade-in">
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-separate border-spacing-0 text-xs">
@@ -5105,7 +5487,10 @@
                 </table>
               </div>
             </div>
-          ) : (
+          )}
+
+          {/* TAMPILAN 3: RIWAYAT PERUBAHAN HARGA */}
+          {viewMode === 'history' && (
             <div className="bg-white dark:bg-slate-955 rounded-2xl border border-slate-150 dark:border-slate-850 shadow-sm overflow-hidden animate-fade-in">
               <table className="w-full text-left border-collapse text-xs">
                 <thead>
@@ -5453,10 +5838,11 @@
 
         // Auto price pull from price_lists if barangId changes (pulling hargaJual because customer is buying from AR Multi Karya)
         if (field === 'barangId') {
-          const matches = priceLists.filter(p => p.barangId === Number(value));
+          const bId = Number(value);
+          const matches = priceLists.filter(p => Number(p.barangId || p.barang_id) === bId);
           if (matches.length > 0) {
-            matches.sort((a, b) => new Date(b.effectiveDate) - new Date(a.effectiveDate));
-            updated[index].price = matches[0].hargaJual || 0;
+            matches.sort((a, b) => new Date(b.effectiveDate || b.effective_date || 0) - new Date(a.effectiveDate || a.effective_date || 0));
+            updated[index].price = Number(matches[0].hargaJual || matches[0].harga_jual) || 0;
           } else {
             updated[index].price = 0;
           }
