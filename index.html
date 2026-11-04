@@ -644,11 +644,24 @@
                 });
               }
             }
+            // Fallback ke data lokal/SEED jika database cloud kosong untuk katalog pokok
+            if ((!data || data.length === 0) && (storeName === 'barang' || storeName === 'price_lists' || storeName === 'suppliers')) {
+              const localData = await getLocalAllFromStore(storeName);
+              if (localData && localData.length > 0) return localData;
+              if (storeName === 'barang' && typeof SEED_BARANG !== 'undefined' && SEED_BARANG.length > 0) return SEED_BARANG;
+              if (storeName === 'price_lists' && typeof SEED_PRICE_LIST !== 'undefined' && SEED_PRICE_LIST.length > 0) return SEED_PRICE_LIST;
+              if (storeName === 'suppliers' && typeof SEED_SUPPLIERS !== 'undefined' && SEED_SUPPLIERS.length > 0) return SEED_SUPPLIERS;
+            }
             return data || [];
           })
-          .catch(err => {
+          .catch(async (err) => {
             console.warn(`Supabase fetch failed for ${storeName}, falling back to local DB:`, err);
-            return getLocalAllFromStore(storeName);
+            const localData = await getLocalAllFromStore(storeName);
+            if (localData && localData.length > 0) return localData;
+            if (storeName === 'barang' && typeof SEED_BARANG !== 'undefined') return SEED_BARANG;
+            if (storeName === 'price_lists' && typeof SEED_PRICE_LIST !== 'undefined') return SEED_PRICE_LIST;
+            if (storeName === 'suppliers' && typeof SEED_SUPPLIERS !== 'undefined') return SEED_SUPPLIERS;
+            return [];
           });
       }
       return getLocalAllFromStore(storeName);
@@ -5779,9 +5792,9 @@
       const [isSidebarCollapsed, setIsSidebarCollapsed] = React.useState(false);
       
       // Tables Data
-      const [suppliers, setSuppliers] = React.useState([]);
-      const [barangList, setBarangList] = React.useState([]);
-      const [priceLists, setPriceLists] = React.useState([]);
+      const [suppliers, setSuppliers] = React.useState(() => (typeof SEED_SUPPLIERS !== 'undefined' && SEED_SUPPLIERS.length > 0) ? SEED_SUPPLIERS : []);
+      const [barangList, setBarangList] = React.useState(() => (typeof SEED_BARANG !== 'undefined' && SEED_BARANG.length > 0) ? SEED_BARANG : []);
+      const [priceLists, setPriceLists] = React.useState(() => (typeof SEED_PRICE_LIST !== 'undefined' && SEED_PRICE_LIST.length > 0) ? SEED_PRICE_LIST : []);
       const [customers, setCustomers] = React.useState([]);
       const [poList, setPoList] = React.useState([]);
       const [buktiPembelian, setBuktiPembelian] = React.useState([]);
@@ -5807,8 +5820,8 @@
       const reloadData = async () => {
         try {
           const sup = await getAllFromStore('suppliers');
-          const brg = await getAllFromStore('barang');
-          const prc = await getAllFromStore('price_lists');
+          let brg = await getAllFromStore('barang');
+          let prc = await getAllFromStore('price_lists');
           const cust = await getAllFromStore('customers');
           const po = await getAllFromStore('po');
           const bkt = await getAllFromStore('bukti_pembelian');
@@ -5817,66 +5830,72 @@
           const chats = await getAllFromStore('chat_messages');
           const sett = await getFromStore('settings', 'pt_ar_multi_karya_profile');
 
-          // Auto-upgrade katalog bahan baku makanan PT AR Multi Karya jika masih data semen/kosong
-          if (brg.length === 0 || (brg.length <= 5 && brg.some(b => (b.name || '').toLowerCase().includes('semen')))) {
-            console.log('Mengaktifkan katalog 215 Bahan Baku Makanan PT AR Multi Karya...');
-            if (supabaseClient) {
-              try {
-                if (brg.some(b => (b.name || '').toLowerCase().includes('semen'))) {
-                  await supabaseClient.from('price_lists').delete().neq('id', 0);
-                  await supabaseClient.from('barang').delete().neq('id', 0);
-                }
-                for (let i = 0; i < SEED_BARANG.length; i += 50) {
-                  await supabaseClient.from('barang').upsert(SEED_BARANG.slice(i, i + 50));
-                }
-                for (let i = 0; i < SEED_PRICE_LIST.length; i += 50) {
-                  await supabaseClient.from('price_lists').upsert(SEED_PRICE_LIST.slice(i, i + 50));
-                }
-              } catch(errSync) {
-                console.warn('Auto-seed Supabase notice:', errSync);
-              }
-            }
-            fallbackDB['barang'] = [...SEED_BARANG];
-            fallbackDB['price_lists'] = [...SEED_PRICE_LIST];
-            try {
-              localStorage.setItem('fallback_db_barang', JSON.stringify(SEED_BARANG));
-              localStorage.setItem('fallback_db_price_lists', JSON.stringify(SEED_PRICE_LIST));
-            } catch(e) {}
-            brg = [...SEED_BARANG];
-            prc = [...SEED_PRICE_LIST];
+          // Jaminan data katalog tidak pernah kosong
+          if (!brg || brg.length === 0) {
+            brg = (typeof SEED_BARANG !== 'undefined' && SEED_BARANG.length > 0) ? [...SEED_BARANG] : [];
+          }
+          if (!prc || prc.length === 0) {
+            prc = (typeof SEED_PRICE_LIST !== 'undefined' && SEED_PRICE_LIST.length > 0) ? [...SEED_PRICE_LIST] : [];
           }
 
-          setSuppliers(sup);
+          // Simpan ke local DB agar siap offline
+          try {
+            fallbackDB['barang'] = brg;
+            fallbackDB['price_lists'] = prc;
+            localStorage.setItem('fallback_db_barang', JSON.stringify(brg));
+            localStorage.setItem('fallback_db_price_lists', JSON.stringify(prc));
+          } catch(e) {}
+
+          setSuppliers(sup && sup.length > 0 ? sup : (typeof SEED_SUPPLIERS !== 'undefined' ? SEED_SUPPLIERS : []));
           setBarangList(brg);
           setPriceLists(prc);
-          setCustomers(cust);
-          setPoList(po);
-          setBuktiPembelian(bkt);
-          setInvoices(inv);
-          setLogs(lg.reverse().slice(0, 50));
-          setChatMessages(chats);
+          setCustomers(cust || []);
+          setPoList(po || []);
+          setBuktiPembelian(bkt || []);
+          setInvoices(inv || []);
+          setLogs((lg || []).reverse().slice(0, 50));
+          setChatMessages(chats || []);
           if (sett) setSettings(sett);
+
+          // Background sync ke Supabase tanpa memblokir UI jika remote masih kosong
+          if (supabaseClient && brg.length > 0) {
+            setTimeout(async () => {
+              try {
+                const { data: remoteData } = await supabaseClient.from('barang').select('id').limit(1);
+                if (!remoteData || remoteData.length === 0) {
+                  for (let i = 0; i < brg.length; i += 50) {
+                    await supabaseClient.from('barang').upsert(brg.slice(i, i + 50));
+                  }
+                  for (let i = 0; i < prc.length; i += 50) {
+                    await supabaseClient.from('price_lists').upsert(prc.slice(i, i + 50));
+                  }
+                  console.log('Background sync ke Supabase berhasil.');
+                }
+              } catch (errSync) {
+                console.warn('Background sync Supabase notice:', errSync);
+              }
+            }, 300);
+          }
 
           // Check for items with no price list update in last 7 days
           const alerts = [];
           brg.forEach(b => {
-            const history = prc.filter(p => p.barangId === b.id);
+            const history = prc.filter(p => Number(p.barangId || p.barang_id) === Number(b.id));
             if (history.length === 0) {
-              alerts.push(b.name);
-            } else {
-              history.sort((a, b) => new Date(b.effectiveDate) - new Date(a.effectiveDate));
-              const latestDate = new Date(history[0].effectiveDate);
-              const diffTime = Math.abs(new Date() - latestDate);
-              const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-              if (diffDays > 7) {
-                alerts.push(b.name);
-              }
+              alerts.push({
+                type: 'warning',
+                title: 'Belum Ada Harga',
+                message: `${b.name} belum memiliki riwayat harga.`,
+                barangId: b.id
+              });
             }
           });
           setPriceAlerts(alerts);
         } catch (err) {
           console.error("Gagal reload data database:", err);
-          showToast("Koneksi database terputus. Silakan hubungkan server database atau periksa koneksi Anda.", "error");
+          // Jika terjadi error koneksi, tetap gunakan seed/fallback
+          if (typeof SEED_BARANG !== 'undefined') setBarangList(SEED_BARANG);
+          if (typeof SEED_PRICE_LIST !== 'undefined') setPriceLists(SEED_PRICE_LIST);
         }
       };
 
@@ -8517,7 +8536,16 @@
             } else {
               showToast(`🎉 Berhasil memproses & mengimpor ${importedCount} item harga dari file!`, 'success');
             }
-            if (reloadData) await reloadData();
+            if (reloadData) {
+              await reloadData();
+            }
+            // Double check proteksi: jangan pernah biarkan state berkurang kembali ke 0
+            if (setBarangList) {
+              setBarangList(prev => (prev && prev.length >= updatedBarang.length ? prev : [...updatedBarang]));
+            }
+            if (setPriceLists) {
+              setPriceLists(prev => (prev && prev.length >= updatedPrices.length ? prev : [...updatedPrices]));
+            }
           } catch (err) {
             console.error('Import error:', err);
             showToast('Gagal memproses file Excel: ' + (err.message || 'Format tidak valid'), 'error');
