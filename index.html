@@ -6991,8 +6991,39 @@
                     <tbody className="divide-y divide-slate-100 dark:divide-slate-900 font-semibold">
                       {barangList.map((b, idx) => {
                         const bId = Number(b.id);
-                        const m = priceLists.filter(p => Number(p.barangId || p.barang_id) === bId)
-                                            .sort((x, y) => new Date(y.effectiveDate || y.effective_date || 0) - new Date(x.effectiveDate || x.effective_date || 0));
+                        let m = priceLists.filter(p => Number(p.barangId || p.barang_id) === bId);
+                        if (m.length === 0 && barangList) {
+                          const targetB = barangList.find(x => Number(x.id) === bId);
+                          if (targetB) {
+                            m = priceLists.filter(p => {
+                              const pb = barangList.find(x => Number(x.id) === Number(p.barangId || p.barang_id));
+                              if (pb) {
+                                if (targetB.code && pb.code && targetB.code.toLowerCase().trim() === pb.code.toLowerCase().trim()) return true;
+                                if (targetB.name && pb.name && targetB.name.toLowerCase().trim() === pb.name.toLowerCase().trim()) return true;
+                              }
+                              return false;
+                            });
+                          }
+                        }
+                        if (m.length === 0 && typeof SEED_BARANG !== 'undefined' && typeof SEED_PRICE_LIST !== 'undefined') {
+                          const targetB = barangList.find(x => Number(x.id) === bId);
+                          if (targetB) {
+                            const seedB = SEED_BARANG.find(sb => 
+                              (targetB.code && sb.code && sb.code.toLowerCase().trim() === targetB.code.toLowerCase().trim()) ||
+                              (targetB.name && sb.name && sb.name.toLowerCase().trim() === targetB.name.toLowerCase().trim())
+                            );
+                            if (seedB) {
+                              m = SEED_PRICE_LIST.filter(sp => Number(sp.barangId) === Number(seedB.id));
+                            }
+                          }
+                        }
+                        m.sort((x, y) => {
+                          const xP = Number(x.hargaJual || x.harga_jual) || 0;
+                          const yP = Number(y.hargaJual || y.harga_jual) || 0;
+                          if (yP > 0 && xP <= 0) return 1;
+                          if (xP > 0 && yP <= 0) return -1;
+                          return new Date(y.effectiveDate || y.effective_date || 0) - new Date(x.effectiveDate || x.effective_date || 0);
+                        });
                         const pVal = m.length > 0 ? (Number(m[0].hargaJual || m[0].harga_jual) || 0) : 0;
                         const stockVal = Number(b.stock) || 0;
                         const isReady = stockVal > 50;
@@ -8118,11 +8149,50 @@
 
       const getLatestPrice = React.useCallback((bId) => {
         const idNum = Number(bId);
-        const matches = priceLists.filter(p => Number(p.barangId || p.barang_id) === idNum);
+        let matches = priceLists.filter(p => Number(p.barangId || p.barang_id) === idNum);
+
+        // Jika tidak cocok berdasarkan ID numerik, cocokkan cerdas berdasarkan Kode atau Nama Barang
+        if (matches.length === 0 && barangList) {
+          const targetB = barangList.find(x => Number(x.id) === idNum);
+          if (targetB) {
+            matches = priceLists.filter(p => {
+              const pb = barangList.find(x => Number(x.id) === Number(p.barangId || p.barang_id));
+              if (pb) {
+                if (targetB.code && pb.code && targetB.code.toLowerCase().trim() === pb.code.toLowerCase().trim()) return true;
+                if (targetB.name && pb.name && targetB.name.toLowerCase().trim() === pb.name.toLowerCase().trim()) return true;
+              }
+              return false;
+            });
+          }
+        }
+
+        // Fallback ke SEED jika belum ada di database
+        if (matches.length === 0 && typeof SEED_BARANG !== 'undefined' && typeof SEED_PRICE_LIST !== 'undefined') {
+          const targetB = barangList.find(x => Number(x.id) === idNum);
+          if (targetB) {
+            const seedB = SEED_BARANG.find(sb => 
+              (targetB.code && sb.code && sb.code.toLowerCase().trim() === targetB.code.toLowerCase().trim()) ||
+              (targetB.name && sb.name && sb.name.toLowerCase().trim() === targetB.name.toLowerCase().trim())
+            );
+            if (seedB) {
+              matches = SEED_PRICE_LIST.filter(sp => Number(sp.barangId) === Number(seedB.id));
+            }
+          }
+        }
+
         if (matches.length === 0) return null;
-        matches.sort((a, b) => new Date(b.effectiveDate || b.effective_date || 0) - new Date(a.effectiveDate || a.effective_date || 0));
+
+        // Prioritaskan yang memiliki hargaJual > 0, lalu urutkan tanggal terbaru
+        matches.sort((a, b) => {
+          const aPrice = Number(a.hargaJual || a.harga_jual) || 0;
+          const bPrice = Number(b.hargaJual || b.harga_jual) || 0;
+          if (bPrice > 0 && aPrice <= 0) return 1;
+          if (aPrice > 0 && bPrice <= 0) return -1;
+          return new Date(b.effectiveDate || b.effective_date || 0) - new Date(a.effectiveDate || a.effective_date || 0);
+        });
+
         return matches[0];
-      }, [priceLists]);
+      }, [priceLists, barangList]);
 
       // Bulk Selection States
       const [selectedIds, setSelectedIds] = React.useState([]);
@@ -8839,9 +8909,8 @@
                             </td>
                             <td className="py-4 px-6 text-right font-mono font-bold">
                               {(() => {
-                                const bId = Number(b.id);
-                                const m = priceLists.filter(p => Number(p.barangId || p.barang_id) === bId).sort((x, y) => new Date(y.effectiveDate || y.effective_date || 0) - new Date(x.effectiveDate || x.effective_date || 0));
-                                const pVal = m.length > 0 ? (Number(m[0].hargaJual || m[0].harga_jual) || 0) : 0;
+                                const latest = getLatestPrice(b.id);
+                                const pVal = latest ? (Number(latest.hargaJual || latest.harga_jual) || 0) : 0;
                                 return pVal > 0 ? (
                                   <span className="text-primary-600 dark:text-primary-400 font-black text-sm">{formatRupiah(pVal)}</span>
                                 ) : (
@@ -9878,9 +9947,40 @@
         // Auto price pull from price_lists if barangId changes (pulling hargaJual because customer is buying from AR Multi Karya)
         if (field === 'barangId') {
           const bId = Number(value);
-          const matches = priceLists.filter(p => Number(p.barangId || p.barang_id) === bId);
+          let matches = priceLists.filter(p => Number(p.barangId || p.barang_id) === bId);
+          if (matches.length === 0 && barangList) {
+            const targetB = barangList.find(x => Number(x.id) === bId);
+            if (targetB) {
+              matches = priceLists.filter(p => {
+                const pb = barangList.find(x => Number(x.id) === Number(p.barangId || p.barang_id));
+                if (pb) {
+                  if (targetB.code && pb.code && targetB.code.toLowerCase().trim() === pb.code.toLowerCase().trim()) return true;
+                  if (targetB.name && pb.name && targetB.name.toLowerCase().trim() === pb.name.toLowerCase().trim()) return true;
+                }
+                return false;
+              });
+            }
+          }
+          if (matches.length === 0 && typeof SEED_BARANG !== 'undefined' && typeof SEED_PRICE_LIST !== 'undefined') {
+            const targetB = barangList.find(x => Number(x.id) === bId);
+            if (targetB) {
+              const seedB = SEED_BARANG.find(sb => 
+                (targetB.code && sb.code && sb.code.toLowerCase().trim() === targetB.code.toLowerCase().trim()) ||
+                (targetB.name && sb.name && sb.name.toLowerCase().trim() === targetB.name.toLowerCase().trim())
+              );
+              if (seedB) {
+                matches = SEED_PRICE_LIST.filter(sp => Number(sp.barangId) === Number(seedB.id));
+              }
+            }
+          }
           if (matches.length > 0) {
-            matches.sort((a, b) => new Date(b.effectiveDate || b.effective_date || 0) - new Date(a.effectiveDate || a.effective_date || 0));
+            matches.sort((a, b) => {
+              const aPrice = Number(a.hargaJual || a.harga_jual) || 0;
+              const bPrice = Number(b.hargaJual || b.harga_jual) || 0;
+              if (bPrice > 0 && aPrice <= 0) return 1;
+              if (aPrice > 0 && bPrice <= 0) return -1;
+              return new Date(b.effectiveDate || b.effective_date || 0) - new Date(a.effectiveDate || a.effective_date || 0);
+            });
             updated[index].price = Number(matches[0].hargaJual || matches[0].harga_jual) || 0;
           } else {
             updated[index].price = 0;
