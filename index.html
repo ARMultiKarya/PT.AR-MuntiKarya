@@ -4367,21 +4367,6 @@
 
       // Import Excel using SheetJS
       const handleImportExcel = (e) => {
-        if (suppliers.length === 0 || barangList.length === 0 || (poList.length === 0 && buktiPembelian.length === 0)) {
-          e.target.value = '';
-          if (suppliers.length === 0) {
-            alert("⚠️ ALUR KERJA TERHALANG\n\nAnda wajib mengisikan Master Supplier terlebih dahulu.");
-            if (onNavigate) onNavigate('supplier');
-          } else if (barangList.length === 0) {
-            alert("⚠️ ALUR KERJA TERHALANG\n\nAnda wajib mengisikan Master Barang terlebih dahulu.");
-            if (onNavigate) onNavigate('barang');
-          } else {
-            alert("⚠️ ALUR KERJA TERHALANG\n\nAnda wajib mencatat Pembelian (PO / Bukti Pembelian) terlebih dahulu sebelum menetapkan harga.");
-            if (onNavigate) onNavigate('po');
-          }
-          return;
-        }
-
         const file = e.target.files[0];
         if (!file) return;
 
@@ -4394,91 +4379,150 @@
             const ws = wb.Sheets[wsname];
             const data = XLSX.utils.sheet_to_json(ws, { header: 1 });
 
-            if (!data || data.length <= 1) {
-              showToast('File Excel kosong atau hanya berisi baris header.', 'error');
+            if (!data || data.length === 0) {
+              showToast('File Excel kosong.', 'error');
               return;
             }
 
-            // Detect headers dynamically
-            const headers = data[0].map(h => String(h || '').trim().toLowerCase());
+            // 1. Deteksi baris header secara cerdas (mencari baris yang mengandung nama/barang/harga/kode)
+            let headerRowIdx = 0;
+            let bestMatchScore = 0;
+            for (let r = 0; r < Math.min(data.length, 10); r++) {
+              const rowTexts = (data[r] || []).map(c => String(c || '').trim().toLowerCase());
+              let score = 0;
+              rowTexts.forEach(txt => {
+                if (txt.includes('nama') || txt.includes('barang') || txt.includes('item') || txt.includes('produk')) score += 3;
+                if (txt.includes('harga') || txt.includes('beli') || txt.includes('jual') || txt.includes('cost') || txt.includes('hpp') || txt.includes('price')) score += 3;
+                if (txt.includes('kode') || txt.includes('code') || txt.includes('satuan') || txt.includes('unit')) score += 1;
+              });
+              if (score > bestMatchScore) {
+                bestMatchScore = score;
+                headerRowIdx = r;
+              }
+            }
+
+            const headerRow = data[headerRowIdx] || [];
+            const headers = headerRow.map(h => String(h || '').trim().toLowerCase());
+
+            // 2. Petakan kolom-kolom penting
+            let codeIdx = headers.findIndex(h => h.includes('kode') || h.includes('code') || h.includes('sku') || h.includes('kd'));
+            let nameIdx = headers.findIndex(h => h.includes('nama') || h.includes('barang') || h.includes('item') || h.includes('produk') || h.includes('deskripsi'));
+            let unitIdx = headers.findIndex(h => h.includes('satuan') || h.includes('unit') || h.includes('uom'));
+            let catIdx = headers.findIndex(h => h.includes('kategori') || h.includes('category') || h.includes('kelompok') || h.includes('jenis'));
             
-            let nameIdx = headers.indexOf('nama barang');
-            let beliIdx = headers.indexOf('harga beli');
-            let jualIdx = headers.indexOf('harga jual');
-            let dateIdx = headers.indexOf('tanggal berlaku');
-            if (dateIdx === -1) dateIdx = headers.indexOf('tanggal mulai berlaku');
-            let dateEndIdx = headers.indexOf('berlaku hingga');
-            if (dateEndIdx === -1) dateEndIdx = headers.indexOf('tanggal berakhir');
+            // Kolom Harga Beli / HPP / Modal
+            let beliIdx = headers.findIndex(h => (h.includes('beli') || h.includes('cost') || h.includes('hpp') || h.includes('modal') || h.includes('pokok')) && !h.includes('jual'));
+            
+            // Kolom Harga Jual / Katalog SPPG
+            let jualIdx = headers.findIndex(h => (h.includes('jual') || h.includes('price') || h.includes('katalog') || h.includes('sppg')) && !h.includes('beli'));
+            
+            // Jika kata 'beli'/'jual' tidak spesifik, cari kolom-kolom yang berlabel harga
+            if (beliIdx === -1 || jualIdx === -1) {
+              const priceIndices = [];
+              headers.forEach((h, idx) => {
+                if (h.includes('harga') || h.includes('tarif') || h.includes('rp')) priceIndices.push(idx);
+              });
+              if (beliIdx === -1 && priceIndices.length >= 2) beliIdx = priceIndices[0];
+              if (jualIdx === -1 && priceIndices.length >= 2) jualIdx = priceIndices[1];
+              if (jualIdx === -1 && priceIndices.length === 1) jualIdx = priceIndices[0];
+            }
 
-            // Substring mapping to allow variations in header names
-            if (nameIdx === -1) nameIdx = headers.findIndex(h => h.includes('nama') || h.includes('barang') || h.includes('item'));
-            if (beliIdx === -1) beliIdx = headers.findIndex(h => h.includes('beli') || h.includes('harga beli') || h.includes('cost'));
-            if (jualIdx === -1) jualIdx = headers.findIndex(h => h.includes('jual') || h.includes('harga jual') || h.includes('price'));
-            if (dateIdx === -1) dateIdx = headers.findIndex(h => h.includes('mulai') || h.includes('tanggal') || h.includes('date') || h.includes('berlaku'));
-            if (dateEndIdx === -1) dateEndIdx = headers.findIndex(h => h.includes('hingga') || h.includes('sampai') || h.includes('akhir') || h.includes('end'));
+            // Tanggal
+            let dateIdx = headers.findIndex(h => (h.includes('mulai') || h.includes('berlaku') || h.includes('tanggal') || h.includes('date') || h.includes('tgl')) && !h.includes('hingga') && !h.includes('sampai') && !h.includes('akhir'));
+            let dateEndIdx = headers.findIndex(h => h.includes('hingga') || h.includes('sampai') || h.includes('akhir') || h.includes('end'));
 
-            // Fallback to default indices if still not found
-            if (nameIdx === -1) nameIdx = 0;
-            if (beliIdx === -1) beliIdx = 1;
-            if (jualIdx === -1) jualIdx = 2;
-            if (dateIdx === -1) dateIdx = 3;
+            // Fallback jika tidak ada header sama sekali
+            if (nameIdx === -1 && headers.length >= 2) {
+              nameIdx = headers.length >= 3 ? 1 : 0;
+              beliIdx = headers.length >= 3 ? 2 : 1;
+              jualIdx = headers.length >= 4 ? 3 : (headers.length >= 3 ? 2 : 1);
+            }
+
+            // Helper parser angka (mendukung "Rp 50.000", "50,000", "50.000,00", dll)
+            const parseMoney = (val) => {
+              if (val === undefined || val === null || val === '') return 0;
+              if (typeof val === 'number') return isNaN(val) ? 0 : val;
+              let s = String(val).replace(/rp/gi, '').replace(/\s+/g, '').trim();
+              if (!s) return 0;
+              if (s.includes('.') && s.includes(',')) {
+                s = s.replace(/\./g, '').replace(',', '.');
+              } else if (s.includes('.')) {
+                const parts = s.split('.');
+                if (parts.length > 2 || (parts.length === 2 && parts[1].length === 3)) {
+                  s = s.replace(/\./g, '');
+                }
+              } else if (s.includes(',')) {
+                const parts = s.split(',');
+                if (parts.length === 2 && parts[1].length === 3) {
+                  s = s.replace(',', '');
+                } else {
+                  s = s.replace(',', '.');
+                }
+              }
+              const n = parseFloat(s);
+              return isNaN(n) ? 0 : n;
+            };
+
+            // Helper parser tanggal
+            const parseDate = (val) => {
+              if (!val) return new Date().toISOString().split('T')[0];
+              if (typeof val === 'number' && val > 20000 && val < 60000) {
+                const d = new Date((val - 25569) * 86400 * 1000);
+                if (!isNaN(d.getTime())) return d.toISOString().split('T')[0];
+              }
+              const s = String(val).trim();
+              if (!s || s.toLowerCase() === 'seterusnya' || s === '-') return '';
+              if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+              const dmy = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+              if (dmy) {
+                return `${dmy[3]}-${dmy[2].padStart(2, '0')}-${dmy[1].padStart(2, '0')}`;
+              }
+              const d = new Date(s);
+              if (!isNaN(d.getTime())) return d.toISOString().split('T')[0];
+              return new Date().toISOString().split('T')[0];
+            };
 
             let importedCount = 0;
             let skippedEmptyCount = 0;
-            let skippedNotFoundNames = [];
+            const todayStr = new Date().toISOString().split('T')[0];
 
-            for (let i = 1; i < data.length; i++) {
+            for (let i = headerRowIdx + 1; i < data.length; i++) {
               const row = data[i];
               if (!row || row.length === 0) continue;
 
-              const rBarangName = row[nameIdx] ? String(row[nameIdx]).trim() : '';
-              const rHargaBeli = row[beliIdx] ? Number(row[beliIdx]) : 0;
-              const rHargaJual = row[jualIdx] ? Number(row[jualIdx]) : 0;
-              
-              // Handle Excel date format or string date format for Start Date
-              let rDate = '';
-              if (row[dateIdx]) {
-                if (typeof row[dateIdx] === 'number' && row[dateIdx] > 40000) {
-                  const dateObj = new Date((row[dateIdx] - 25569) * 86400 * 1000);
-                  rDate = dateObj.toISOString().split('T')[0];
-                } else {
-                  rDate = String(row[dateIdx]).trim();
-                }
-              } else {
-                rDate = new Date().toISOString().split('T')[0];
-              }
+              const rCode = codeIdx !== -1 && row[codeIdx] ? String(row[codeIdx]).trim() : '';
+              const rName = nameIdx !== -1 && row[nameIdx] ? String(row[nameIdx]).trim() : '';
+              const rUnit = unitIdx !== -1 && row[unitIdx] ? String(row[unitIdx]).trim().toUpperCase() : 'KG';
+              const rCat = catIdx !== -1 && row[catIdx] ? String(row[catIdx]).trim() : 'Bahan Baku';
 
-              // Handle End Date if present
-              let rDateEnd = '';
-              if (dateEndIdx !== -1 && row[dateEndIdx]) {
-                if (typeof row[dateEndIdx] === 'number' && row[dateEndIdx] > 40000) {
-                  const dateObj = new Date((row[dateEndIdx] - 25569) * 86400 * 1000);
-                  rDateEnd = dateObj.toISOString().split('T')[0];
-                } else {
-                  rDateEnd = String(row[dateEndIdx]).trim();
-                }
-              }
-
-              if (!rBarangName) {
+              if (!rName && !rCode) {
                 skippedEmptyCount++;
                 continue;
               }
 
-              let matchedBarang = barangList.find(b => 
-                b.name.toLowerCase() === rBarangName.toLowerCase() ||
-                b.name.toLowerCase().includes(rBarangName.toLowerCase()) ||
-                b.code.toLowerCase() === rBarangName.toLowerCase()
-              );
-              
+              const rHargaBeli = beliIdx !== -1 ? parseMoney(row[beliIdx]) : 0;
+              const rHargaJual = jualIdx !== -1 ? parseMoney(row[jualIdx]) : 0;
+              const rDate = dateIdx !== -1 && row[dateIdx] ? parseDate(row[dateIdx]) : todayStr;
+              const rDateEnd = dateEndIdx !== -1 && row[dateEndIdx] ? parseDate(row[dateEndIdx]) : '';
+
+              // Cari barang yang cocok di Master Barang
+              let matchedBarang = barangList.find(b => {
+                if (rCode && b.code && b.code.toLowerCase() === rCode.toLowerCase()) return true;
+                if (rName && b.name && b.name.toLowerCase() === rName.toLowerCase()) return true;
+                if (rName && b.name && b.name.toLowerCase().replace(/[^a-z0-9]/g, '') === rName.toLowerCase().replace(/[^a-z0-9]/g, '')) return true;
+                return false;
+              });
+
+              // Jika barang belum terdaftar di Master Barang, buatkan otomatis
               if (!matchedBarang) {
-                // Auto-buat barang baru jika belum terdaftar di master barang
+                const fallbackSupplierId = suppliers[0] ? suppliers[0].id : 1;
                 const newBarangData = {
-                  code: 'BRG-' + String(barangList.length + importedCount + 1).padStart(3, '0'),
-                  name: rBarangName,
-                  unit: 'KG',
+                  code: rCode || ('BRG-' + String(barangList.length + importedCount + 1).padStart(3, '0')),
+                  name: rName || rCode,
+                  unit: rUnit || 'KG',
                   stock: 100,
-                  kategori: 'Bahan Baku',
-                  supplierId: suppliers[0] ? suppliers[0].id : 73,
+                  kategori: rCat || 'Bahan Baku',
+                  supplierId: fallbackSupplierId,
                   notes: 'Dibuat otomatis dari Import Price List'
                 };
                 const newBId = await saveToStore('barang', newBarangData);
@@ -4486,24 +4530,19 @@
                 barangList.push(matchedBarang);
               }
 
-              // Normalisasi format tanggal jika mm/dd/yyyy
-              if (rDate.includes('/')) {
-                const parts = rDate.split('/');
-                if (parts.length === 3) {
-                  rDate = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
-                }
-              }
-
               const newPriceList = {
-                barangId: matchedBarang.id,
+                barangId: Number(matchedBarang.id),
                 hargaBeli: rHargaBeli,
                 hargaJual: rHargaJual,
                 effectiveDate: rDate,
                 effectiveDateEnd: rDateEnd
               };
 
-              // Check if already exists for same date and item
-              const existing = priceLists.find(p => p.barangId === matchedBarang.id && p.effectiveDate === rDate);
+              // Cek apakah sudah pernah ada penetapan harga untuk barang & tanggal ini
+              const existing = priceLists.find(p => 
+                Number(p.barangId || p.barang_id) === Number(matchedBarang.id) && 
+                (p.effectiveDate || p.effective_date) === rDate
+              );
               if (existing) {
                 newPriceList.id = existing.id;
               }
@@ -4512,66 +4551,66 @@
               importedCount++;
             }
 
-            await logActivity('Import Price List', `${importedCount} entri katalog harga diimpor dari file Excel.`);
-            
+            await logActivity('Import Price List', `${importedCount} entri harga berhasil diimpor dari file Excel.`);
+
             if (importedCount === 0) {
-              let errorMsg = '0 data berhasil diimpor. ';
-              if (skippedNotFoundNames.length > 0) {
-                errorMsg += `${skippedNotFoundNames.length} nama barang tidak terdaftar di Master Barang (contoh: "${skippedNotFoundNames[0]}").`;
-              } else if (skippedEmptyCount > 0) {
-                errorMsg += 'Kolom Nama Barang kosong pada baris data.';
-              } else {
-                errorMsg += 'Periksa apakah format nama kolom sudah sesuai (Nama Barang, Harga Beli, Harga Jual, Tanggal Mulai Berlaku, Berlaku Hingga).';
-              }
-              showToast(errorMsg, 'error');
+              showToast('Tidak ada data yang berhasil diimpor. Pastikan Excel memiliki kolom Nama Barang dan Harga.', 'error');
             } else {
-              let successMsg = `${importedCount} katalog harga berhasil diimpor dari Excel.`;
-              if (skippedNotFoundNames.length > 0) {
-                successMsg += ` (Dilewati: ${skippedNotFoundNames.length} barang tidak terdaftar)`;
-              }
-              showToast(successMsg, 'success');
+              showToast(`🎉 Berhasil mengimpor ${importedCount} harga barang dari Excel!`, 'success');
             }
-            reloadData();
+            await reloadData();
           } catch (err) {
-            console.error(err);
-            showToast('Gagal memproses file Excel.', 'error');
+            console.error('Import error:', err);
+            showToast('Gagal memproses file Excel: ' + (err.message || 'Format tidak valid'), 'error');
           }
         };
         reader.readAsBinaryString(file);
         e.target.value = ''; // clear input
       };
 
-      // Export Excel using SheetJS
+      // Export Excel using SheetJS (Rapi & Langsung Berfungsi Sebagai Template)
       const handleExportExcel = () => {
         const rows = [
-          ['Nama Barang', 'Harga Beli', 'Harga Jual', 'Tanggal Mulai Berlaku', 'Berlaku Hingga']
+          ['Kode Barang', 'Nama Barang', 'Kategori', 'Satuan', 'Harga Beli (Modal)', 'Harga Jual (Katalog SPPG)', 'Tanggal Mulai Berlaku', 'Berlaku Hingga']
         ];
-        priceLists.forEach(p => {
-          const b = barangList.find(x => x.id === p.barangId);
+        barangList.forEach(b => {
+          const latest = getLatestPrice(b.id);
+          const buyPrice = latest ? (Number(latest.hargaBeli ?? latest.harga_beli) || 0) : 0;
+          const sellPrice = latest ? (Number(latest.hargaJual ?? latest.harga_jual) || 0) : 0;
+          const effDate = latest ? (latest.effectiveDate || latest.effective_date || '') : '';
+          const effDateEnd = latest ? (latest.effectiveDateEnd || latest.effective_date_end || '') : '';
           rows.push([
-            b ? b.name : 'Unknown',
-            p.hargaBeli,
-            p.hargaJual,
-            p.effectiveDate,
-            p.effectiveDateEnd || 'Seterusnya'
+            b.code || '',
+            b.name || '',
+            b.kategori || 'Bahan Baku',
+            b.unit || 'KG',
+            buyPrice > 0 ? buyPrice : '',
+            sellPrice > 0 ? sellPrice : '',
+            effDate,
+            effDateEnd
           ]);
         });
 
         const ws = XLSX.utils.aoa_to_sheet(rows);
+        ws['!cols'] = [{ wch: 15 }, { wch: 30 }, { wch: 18 }, { wch: 10 }, { wch: 20 }, { wch: 24 }, { wch: 22 }, { wch: 18 }];
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, 'Price Lists');
-        XLSX.writeFile(wb, 'Data_Price_List_PT_AR.xlsx');
-        logActivity('Export Price List', 'Data katalog harga diexport ke Excel.');
-        showToast('Data harga berhasil diexport ke Excel.');
+        XLSX.writeFile(wb, `Data_Price_List_PT_AR_${new Date().getFullYear()}.xlsx`);
+        logActivity('Export Price List', 'Data & template katalog harga diexport ke Excel.');
+        showToast('Data & template harga berhasil diexport ke Excel.');
       };
 
       const filteredHistory = priceLists.filter(p => {
-        const b = barangList.find(x => x.id === p.barangId);
-        return b && b.name.toLowerCase().includes(globalSearch.toLowerCase());
+        const b = barangList.find(x => Number(x.id) === Number(p.barangId || p.barang_id));
+        const bName = b ? b.name : '';
+        const bCode = b ? b.code : '';
+        const q = (globalSearch || '').toLowerCase().trim();
+        if (!q) return true;
+        return bName.toLowerCase().includes(q) || bCode.toLowerCase().includes(q);
       });
 
       const filteredBarang = barangList.filter(b => {
-        return b.name.toLowerCase().includes(globalSearch.toLowerCase());
+        return b.name.toLowerCase().includes((globalSearch || '').toLowerCase().trim());
       });
 
       if (isSppg) {
@@ -5529,7 +5568,11 @@
                       );
                     }
                     return displayedHistory.map(p => {
-                      const b = barangList.find(x => x.id === p.barangId);
+                      const b = barangList.find(x => Number(x.id) === Number(p.barangId || p.barang_id));
+                      const buyP = Number(p.hargaBeli ?? p.harga_beli ?? 0);
+                      const sellP = Number(p.hargaJual ?? p.harga_jual ?? 0);
+                      const effDate = p.effectiveDate || p.effective_date;
+                      const effDateEnd = p.effectiveDateEnd || p.effective_date_end;
                       return (
                         <tr key={p.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-900/10">
                           <td className="py-4 px-6 w-12 text-center">
@@ -5546,13 +5589,22 @@
                               className="rounded text-primary-600 focus:ring-primary-500 border-slate-350 w-4 h-4 cursor-pointer"
                             />
                           </td>
-                          <td className="py-4 px-6 font-extrabold text-slate-855 dark:text-white">{b ? b.name : 'Unknown'}</td>
-                          {!isReadOnly && <td className="py-4 px-6 text-right font-extrabold text-red-500">{formatRupiah(p.hargaBeli || 0)}</td>}
-                          <td className="py-4 px-6 text-right font-extrabold text-primary-600 dark:text-primary-400">{formatRupiah(p.hargaJual || 0)}</td>
+                          <td className="py-4 px-6 font-extrabold text-slate-855 dark:text-white">
+                            <div>{b ? b.name : ('Barang #' + (p.barangId || p.barang_id))}</div>
+                            {b?.code && <div className="text-[10px] text-slate-400 font-mono font-normal">{b.code}</div>}
+                          </td>
+                          {!isReadOnly && (
+                            <td className="py-4 px-6 text-right font-mono font-bold text-slate-700 dark:text-slate-300">
+                              {buyP > 0 ? formatRupiah(buyP) : '-'}
+                            </td>
+                          )}
+                          <td className="py-4 px-6 text-right font-mono font-bold text-primary-600 dark:text-primary-400">
+                            {sellP > 0 ? formatRupiah(sellP) : '-'}
+                          </td>
                           <td className="py-4 px-6 text-center font-semibold text-slate-555">
-                            {p.effectiveDate ? (
+                            {effDate ? (
                               <span>
-                                {p.effectiveDate} <span className="text-slate-400 font-normal">s/d</span> {p.effectiveDateEnd || 'Seterusnya'}
+                                {effDate} <span className="text-slate-400 font-normal">s/d</span> {effDateEnd || 'Seterusnya'}
                               </span>
                             ) : '-'}
                           </td>
@@ -5561,7 +5613,7 @@
                               <div className="flex items-center justify-end gap-1.5">
                                 <button 
                                   type="button" 
-                                  onClick={() => openPriceModal(p.barangId, p)} 
+                                  onClick={() => openPriceModal(p.barangId || p.barang_id, p)} 
                                   className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-800 text-slate-500 hover:text-primary-600 hover:border-primary-200 dark:hover:text-primary-400 transition-all" 
                                   title="Edit penetapan harga ini"
                                 >
@@ -5588,8 +5640,8 @@
           )}
 
           {/* Form Modal */}
-          {modalOpen && (
-            <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-hidden">
+          {modalOpen && typeof document !== 'undefined' && ReactDOM.createPortal(
+            <div className="fixed inset-0 z-[999999] bg-black/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-hidden" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 999999 }}>
               <div className="bg-white dark:bg-slate-950 w-full max-w-lg rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden flex flex-col max-h-[85vh] sm:max-h-[88vh] my-auto animate-fade-in">
                 {/* Modal Header */}
                 <div className="px-6 py-4 bg-slate-50 dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center flex-shrink-0">
@@ -5681,7 +5733,8 @@
                   </div>
                 </form>
               </div>
-            </div>
+            </div>,
+            document.body
           )}
         </div>
       );
@@ -6840,8 +6893,8 @@
           </div>
 
           {/* Form Modal */}
-          {modalOpen && (
-            <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-hidden">
+          {modalOpen && typeof document !== 'undefined' && ReactDOM.createPortal(
+            <div className="fixed inset-0 z-[999999] bg-black/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-hidden" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 999999 }}>
               <div className="bg-white dark:bg-slate-950 w-full max-w-2xl rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden flex flex-col max-h-[85vh] sm:max-h-[88vh] my-auto animate-fade-in">
                 <div className="px-6 py-3.5 bg-slate-50 dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center flex-shrink-0">
                   <div className="flex items-center gap-2">
@@ -7031,7 +7084,8 @@
                   </div>
                 </form>
               </div>
-            </div>
+            </div>,
+            document.body
           )}
 
           {viewPO && (
@@ -9238,8 +9292,8 @@ customers={customers}
           </div>
 
           {/* Form Modal Invoice */}
-          {modalOpen && (
-            <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm overflow-y-auto flex items-center justify-center p-3 sm:p-4 md:p-6">
+          {modalOpen && typeof document !== 'undefined' && ReactDOM.createPortal(
+            <div className="fixed inset-0 z-[999999] bg-black/60 backdrop-blur-sm overflow-y-auto flex items-center justify-center p-3 sm:p-4 md:p-6" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 999999 }}>
               <div className="bg-white dark:bg-slate-950 w-full max-w-3xl rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden flex flex-col max-h-[85vh] sm:max-h-[88vh] my-auto animate-fade-in">
                 {/* Modal Header (Pinned at Top) */}
                 <div className="px-6 py-3.5 bg-slate-50 dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center flex-shrink-0">
@@ -9494,7 +9548,8 @@ customers={customers}
                   </div>
                 </form>
               </div>
-            </div>
+            </div>,
+            document.body
           )}
 
           {/* View Document Modal */}
